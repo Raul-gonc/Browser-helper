@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Dicionário Pessoal</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      width: 280px; 
+      margin: 10px; 
+      background: #f5f5f5;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 15px;
+      color: #333;
+    }
+    .info {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 10px;
+    }
+    .info h4 {
+      margin: 0 0 10px 0;
+      color: #007cba;
+    }
+    .info p {
+      margin: 5px 0;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .dictionary-list {
+      background: white;
+      border-radius: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .word-item {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+    }
+    .word-item:hover {
+      background: #f0f8ff;
+    }
+    .word-item:last-child {
+      border-bottom: none;
+    }
+    .word-text {
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 5px;
+    }
+    .word-desc {
+      font-size: 12px;
+      color: #666;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 20px;
+      color: #999;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h3>📖 Dicionário Pessoal</h3>
+  </div>
+  
+  <div class="info">
+    <h4>Como usar:</h4>
+    <p>1. Selecione uma palavra na página</p>
+    <p>2. Clique no botão 📝 que aparece</p>
+    <p>3. Adicione uma descrição</p>
+    <p>4. As palavras ficam destacadas na página</p>
+    <p>5. Passe o mouse para ver a descrição</p>
+  </div>
+  
+  <div class="dictionary-list" id="dictionaryList">
+    <div class="empty-state">Carregando...</div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
