@@ -262,15 +262,14 @@ function showTooltip(event, word, desc) {
   tooltip.className = 'dicionario-tooltip';
   tooltip.innerHTML = `
     <div class="dicionario-tooltip-content">
-      <strong class="dicionario-tooltip-word">${word}</strong>
+      <strong class="dicionario-tooltip-word" title="Clique para editar">${word}</strong>
       <p class="dicionario-tooltip-desc">${desc}</p>
-      <button class="dicionario-edit-btn">Editar</button>
     </div>
   `;
   
-  // Posiciona o tooltip acima da palavra para facilitar o acesso ao botão
+  // Posiciona o tooltip acima da palavra
   const x = event.pageX;
-  const y = event.pageY - 80; // Posiciona acima da palavra
+  const y = event.pageY - 70; // Posiciona acima da palavra
   
   tooltip.style.left = x + 'px';
   tooltip.style.top = Math.max(10, y) + 'px'; // Evita que saia da tela
@@ -283,9 +282,9 @@ function showTooltip(event, word, desc) {
     tooltip.style.left = (x - tooltipRect.width - 10) + 'px';
   }
   
-  // Adiciona event listener para o botão editar
-  const editBtn = tooltip.querySelector('.dicionario-edit-btn');
-  editBtn.addEventListener('click', function(e) {
+  // Adiciona event listener para clicar na palavra
+  const wordElement = tooltip.querySelector('.dicionario-tooltip-word');
+  wordElement.addEventListener('click', function(e) {
     e.stopPropagation();
     editWordFromTooltip(word, desc);
   });
@@ -748,24 +747,29 @@ style.textContent = `
     top: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0, 0, 0, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
+    backdrop-filter: blur(2px);
   }
   
   .dicionario-modal-content {
-    background: #2d3748;
-    border-radius: 8px;
+    background: rgba(26, 32, 44, 0.95);
+    border: 1px solid rgba(74, 85, 104, 0.3);
+    border-radius: 12px;
     width: 90%;
-    max-width: 400px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    max-width: 420px;
+    box-shadow: 
+      0 20px 40px rgba(0, 0, 0, 0.3),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
     color: #e2e8f0;
+    backdrop-filter: blur(10px);
   }
   
   .dicionario-modal-header {
-    padding: 15px 20px;
-    border-bottom: 1px solid #4a5568;
+    padding: 24px 24px 16px 24px;
+    border-bottom: 1px solid rgba(74, 85, 104, 0.2);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -774,214 +778,278 @@ style.textContent = `
   .dicionario-modal-header h3 {
     margin: 0;
     color: #f7fafc;
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: -0.025em;
   }
   
   .dicionario-header-buttons {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
   
   .dicionario-config-header-btn {
-    background: #4a5568;
-    color: #e2e8f0;
-    border: none;
+    background: transparent;
+    color: #a0aec0;
+    border: 1px solid rgba(160, 174, 192, 0.2);
     padding: 8px;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 16px;
-    width: 36px;
-    height: 36px;
+    font-size: 14px;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s;
+    transition: all 0.2s ease;
   }
   
   .dicionario-config-header-btn:hover {
-    background: #2d3748;
+    background: rgba(160, 174, 192, 0.1);
+    border-color: rgba(160, 174, 192, 0.4);
+    color: #e2e8f0;
   }
   
   .dicionario-modal-close {
-    font-size: 24px;
+    font-size: 20px;
     cursor: pointer;
     color: #a0aec0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.2s ease;
   }
   
   .dicionario-modal-close:hover {
-    color: #f7fafc;
+    background: rgba(239, 68, 68, 0.1);
+    color: #f56565;
   }
   
   .dicionario-modal-body {
-    padding: 20px;
+    padding: 16px 24px 24px 24px;
   }
   
   .dicionario-modal-body label {
     display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-    color: #f7fafc;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #cbd5e0;
+    font-size: 14px;
+    letter-spacing: 0.025em;
   }
   
   .dicionario-modal-body input,
-  .dicionario-modal-body textarea {
+  .dicionario-modal-body textarea,
+  .dicionario-modal-body select {
     width: 100%;
-    padding: 8px;
-    border: 1px solid #4a5568;
-    border-radius: 4px;
-    margin-bottom: 10px;
+    padding: 12px 16px;
+    border: 1px solid rgba(74, 85, 104, 0.3);
+    border-radius: 8px;
+    margin-bottom: 16px;
     font-family: inherit;
-    background: #1a202c;
+    background: rgba(26, 32, 44, 0.5);
     color: #e2e8f0;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
   }
   
   .dicionario-modal-body input:focus,
-  .dicionario-modal-body textarea:focus {
+  .dicionario-modal-body textarea:focus,
+  .dicionario-modal-body select:focus {
     outline: none;
-    border-color: #4299e1;
-    box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
+    border-color: rgba(66, 153, 225, 0.6);
+    background: rgba(26, 32, 44, 0.8);
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+  }
+  
+  .dicionario-modal-body textarea {
+    resize: vertical;
+    min-height: 80px;
   }
   
   .dicionario-ai-btn-inline {
-    background: #8b5cf6 !important;
-    color: white;
-    border: none;
-    padding: 4px 8px;
-    border-radius: 3px;
+    background: transparent;
+    color: #a78bfa;
+    border: 1px solid rgba(167, 139, 250, 0.3);
+    padding: 6px 12px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 12px;
-    margin-left: 8px;
+    margin-left: 12px;
     vertical-align: middle;
-    transition: background 0.2s;
+    transition: all 0.2s ease;
+    font-weight: 500;
   }
   
   .dicionario-ai-btn-inline:hover {
-    background: #7c3aed !important;
+    background: rgba(167, 139, 250, 0.1);
+    border-color: rgba(167, 139, 250, 0.5);
+    color: #c4b5fd;
   }
   
   .dicionario-ai-btn-inline:disabled {
-    background: #6b7280 !important;
+    background: transparent;
+    color: #6b7280;
+    border-color: rgba(107, 114, 128, 0.3);
     cursor: not-allowed;
   }
   
   .dicionario-modal-buttons {
     display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 12px;
+    margin-top: 8px;
     flex-wrap: wrap;
   }
   
   .dicionario-modal-body button {
-    background: #007cba;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 4px;
+    background: transparent;
+    color: #e2e8f0;
+    border: 1px solid rgba(226, 232, 240, 0.2);
+    padding: 12px 24px;
+    border-radius: 8px;
     cursor: pointer;
     flex: 1;
-    min-width: 100px;
+    min-width: 120px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    letter-spacing: 0.025em;
   }
   
   .dicionario-modal-body button:hover {
-    background: #005a8a;
+    background: rgba(226, 232, 240, 0.1);
+    border-color: rgba(226, 232, 240, 0.4);
+    transform: translateY(-1px);
+  }
+  
+  .dicionario-modal-body button:active {
+    transform: translateY(0);
   }
   
   .dicionario-delete-btn {
-    background: #dc3545 !important;
+    color: #fc8181 !important;
+    border-color: rgba(252, 129, 129, 0.3) !important;
   }
   
   .dicionario-delete-btn:hover {
-    background: #c82333 !important;
+    background: rgba(252, 129, 129, 0.1) !important;
+    border-color: rgba(252, 129, 129, 0.5) !important;
+    color: #f56565 !important;
   }
   
 
   
-  .dicionario-modal-body select {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #4a5568;
-    border-radius: 4px;
-    margin-bottom: 10px;
-    font-family: inherit;
-    background: #1a202c;
-    color: #e2e8f0;
-  }
+
   
   .ai-info {
     background: rgba(0, 0, 0, 0.2);
-    padding: 10px;
-    border-radius: 4px;
-    margin: 10px 0;
+    border: 1px solid rgba(74, 85, 104, 0.2);
+    padding: 16px;
+    border-radius: 8px;
+    margin: 16px 0;
     font-size: 12px;
+    line-height: 1.5;
   }
   
   .ai-info p {
-    margin: 5px 0;
+    margin: 6px 0;
+    color: #a0aec0;
   }
   
   .ai-info strong {
-    color: #4299e1;
+    color: #63b3ed;
+    font-weight: 600;
   }
   
   .dicionario-tooltip {
     position: absolute;
     z-index: 10002;
-    background: #333;
+    background: rgba(45, 55, 72, 0.95);
     color: white;
-    padding: 10px;
-    border-radius: 6px;
-    max-width: 250px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    padding: 12px 16px;
+    border-radius: 8px;
+    max-width: 280px;
+    box-shadow: 
+      0 10px 25px rgba(0, 0, 0, 0.3),
+      0 0 0 1px rgba(255, 255, 255, 0.1);
     pointer-events: auto;
-    transition: opacity 0.2s;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
   
   .dicionario-tooltip:hover {
-    opacity: 1;
+    transform: translateY(-2px);
+    box-shadow: 
+      0 15px 35px rgba(0, 0, 0, 0.4),
+      0 0 0 1px rgba(255, 255, 255, 0.15);
   }
   
   .dicionario-tooltip-word {
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
     color: #ffd700;
-    user-select: text;
-    cursor: text;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    font-weight: 600;
+  }
+  
+  .dicionario-tooltip-word:hover {
+    background: rgba(255, 215, 0, 0.1);
+    border-color: rgba(255, 215, 0, 0.3);
+    color: #ffed4e;
+    transform: translateY(-1px);
   }
   
   .dicionario-tooltip-desc {
-    margin: 0 0 10px 0;
-    line-height: 1.4;
+    margin: 0;
+    line-height: 1.5;
     user-select: text;
     cursor: text;
+    color: #e2e8f0;
+    font-size: 15px;
   }
   
-  .dicionario-edit-btn {
-    background: #007cba;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 12px;
-  }
-  
-  .dicionario-edit-btn:hover {
-    background: #005a8a;
-  }
+
   
   #dicionario-message {
-    margin-top: 10px;
-    padding: 8px;
-    border-radius: 4px;
-    font-size: 14px;
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
     text-align: center;
-    font-weight: bold;
+    font-weight: 500;
     transition: all 0.3s ease;
+    letter-spacing: 0.025em;
   }
   
   #dicionario-message:not(:empty) {
-    border: 1px solid currentColor;
-    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(74, 85, 104, 0.3);
+    background: rgba(0, 0, 0, 0.2);
+  }
+  
+  #ai-config-message {
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    text-align: center;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    letter-spacing: 0.025em;
+  }
+  
+  #ai-config-message:not(:empty) {
+    border: 1px solid rgba(74, 85, 104, 0.3);
+    background: rgba(0, 0, 0, 0.2);
   }
 `;
 document.head.appendChild(style);
