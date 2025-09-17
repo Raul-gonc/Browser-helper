@@ -98,24 +98,33 @@ function hideSelectionButton() {
   }
 }
 
-// Mostra modal para adicionar descrição
+// Mostra modal para adicionar/editar descrição
 function showModal(selectedText) {
   hideModal();
+  
+  // Verifica se a palavra já existe no dicionário
+  const existingDesc = dictionary[selectedText] || '';
+  const isEditing = existingDesc !== '';
+  const modalTitle = isEditing ? 'Editar Descrição' : 'Adicionar ao Dicionário';
+  const buttonText = isEditing ? 'Atualizar' : 'Salvar';
   
   modal = document.createElement('div');
   modal.className = 'dicionario-modal';
   modal.innerHTML = `
     <div class="dicionario-modal-content">
       <div class="dicionario-modal-header">
-        <h3>Adicionar ao Dicionário</h3>
+        <h3>${modalTitle}</h3>
         <span class="dicionario-modal-close">&times;</span>
       </div>
       <div class="dicionario-modal-body">
         <label>Palavra/Frase:</label>
         <input type="text" id="dicionario-word" value="${selectedText}" readonly>
         <label>Descrição:</label>
-        <textarea id="dicionario-desc" placeholder="Digite a descrição..." rows="3"></textarea>
-        <button id="dicionario-save">Salvar</button>
+        <textarea id="dicionario-desc" placeholder="Digite a descrição..." rows="3">${existingDesc}</textarea>
+        <div class="dicionario-modal-buttons">
+          <button id="dicionario-save">${buttonText}</button>
+          ${isEditing ? '<button id="dicionario-delete" class="dicionario-delete-btn">Excluir</button>' : ''}
+        </div>
         <div id="dicionario-message"></div>
       </div>
     </div>
@@ -135,12 +144,15 @@ function showModal(selectedText) {
     
     if (!word || !desc) {
       modal.querySelector('#dicionario-message').textContent = 'Preencha todos os campos!';
+      modal.querySelector('#dicionario-message').style.color = '#dc3545';
       return;
     }
     
     dictionary[word] = desc;
     chrome.storage.sync.set({dictionary: dictionary}, function() {
-      modal.querySelector('#dicionario-message').textContent = 'Salvo com sucesso!';
+      const successMessage = isEditing ? 'Atualizado com sucesso!' : 'Salvo com sucesso!';
+      modal.querySelector('#dicionario-message').textContent = successMessage;
+      modal.querySelector('#dicionario-message').style.color = '#28a745';
       setTimeout(() => {
         hideModal();
         highlightWords();
@@ -148,8 +160,30 @@ function showModal(selectedText) {
     });
   };
   
-  // Foca no campo de descrição
-  modal.querySelector('#dicionario-desc').focus();
+  // Event listener para botão de excluir (se existir)
+  const deleteBtn = modal.querySelector('#dicionario-delete');
+  if (deleteBtn) {
+    deleteBtn.onclick = function() {
+      if (confirm(`Tem certeza que deseja excluir "${selectedText}" do dicionário?`)) {
+        delete dictionary[selectedText];
+        chrome.storage.sync.set({dictionary: dictionary}, function() {
+          modal.querySelector('#dicionario-message').textContent = 'Excluído com sucesso!';
+          modal.querySelector('#dicionario-message').style.color = '#28a745';
+          setTimeout(() => {
+            hideModal();
+            highlightWords();
+          }, 1000);
+        });
+      }
+    };
+  }
+  
+  // Foca no campo de descrição e seleciona o texto se estiver editando
+  const descField = modal.querySelector('#dicionario-desc');
+  descField.focus();
+  if (isEditing) {
+    descField.setSelectionRange(0, descField.value.length);
+  }
 }
 
 // Esconde modal
@@ -160,109 +194,107 @@ function hideModal() {
   }
 }
 
+// Variáveis para controlar o tooltip
+let tooltipTimeout = null;
+let currentTooltipWord = null;
+
 // Mostra tooltip editável ao passar mouse sobre palavras destacadas
 document.addEventListener('mouseover', function(e) {
   if (e.target.classList.contains('dicionario-highlight')) {
+    clearTimeout(tooltipTimeout);
     const word = e.target.getAttribute('data-word');
     const desc = e.target.getAttribute('data-desc');
-    showTooltip(e, word, desc);
+    
+    // Só mostra novo tooltip se for uma palavra diferente
+    if (currentTooltipWord !== word) {
+      showTooltip(e, word, desc);
+      currentTooltipWord = word;
+    }
+  } else if (e.target.closest('.dicionario-tooltip')) {
+    // Cancela o fechamento se o mouse entrou no tooltip
+    clearTimeout(tooltipTimeout);
   }
 });
 
 document.addEventListener('mouseout', function(e) {
   if (e.target.classList.contains('dicionario-highlight')) {
-    hideTooltip();
+    // Só inicia o timeout se o mouse não foi para o tooltip
+    if (!e.relatedTarget?.closest('.dicionario-tooltip')) {
+      tooltipTimeout = setTimeout(() => {
+        hideTooltip();
+        currentTooltipWord = null;
+      }, 300);
+    }
+  } else if (e.target.closest('.dicionario-tooltip') && !e.relatedTarget?.closest('.dicionario-tooltip') && !e.relatedTarget?.classList.contains('dicionario-highlight')) {
+    // Fecha o tooltip quando sai completamente dele e não vai para uma palavra destacada
+    tooltipTimeout = setTimeout(() => {
+      hideTooltip();
+      currentTooltipWord = null;
+    }, 100);
   }
 });
 
 // Mostra tooltip com opção de editar
 function showTooltip(event, word, desc) {
+  // Se já existe tooltip para a mesma palavra, não cria novo
+  if (tooltip && currentTooltipWord === word) {
+    return;
+  }
+  
   hideTooltip();
   
   tooltip = document.createElement('div');
   tooltip.className = 'dicionario-tooltip';
   tooltip.innerHTML = `
     <div class="dicionario-tooltip-content">
-      <strong>${word}</strong>
-      <p>${desc}</p>
-      <button class="dicionario-edit-btn" onclick="editWord('${word}', '${desc}')">Editar</button>
+      <strong class="dicionario-tooltip-word">${word}</strong>
+      <p class="dicionario-tooltip-desc">${desc}</p>
+      <button class="dicionario-edit-btn">Editar</button>
     </div>
   `;
   
-  tooltip.style.left = event.pageX + 'px';
-  tooltip.style.top = (event.pageY - 10) + 'px';
+  // Posiciona o tooltip acima da palavra para facilitar o acesso ao botão
+  const x = event.pageX;
+  const y = event.pageY - 80; // Posiciona acima da palavra
+  
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = Math.max(10, y) + 'px'; // Evita que saia da tela
   
   document.body.appendChild(tooltip);
+  
+  // Ajusta posição se estiver muito próximo da borda direita
+  const tooltipRect = tooltip.getBoundingClientRect();
+  if (tooltipRect.right > window.innerWidth - 10) {
+    tooltip.style.left = (x - tooltipRect.width - 10) + 'px';
+  }
+  
+  // Adiciona event listener para o botão editar
+  const editBtn = tooltip.querySelector('.dicionario-edit-btn');
+  editBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    editWordFromTooltip(word, desc);
+  });
 }
 
 // Esconde tooltip
 function hideTooltip() {
+  clearTimeout(tooltipTimeout);
   if (tooltip) {
     tooltip.remove();
     tooltip = null;
   }
+  currentTooltipWord = null;
 }
 
-// Função global para editar palavra
-window.editWord = function(word, currentDesc) {
+// Função para editar palavra (reutiliza a função showModal)
+function editWordFromTooltip(word, currentDesc) {
   hideTooltip();
-  
-  modal = document.createElement('div');
-  modal.className = 'dicionario-modal';
-  modal.innerHTML = `
-    <div class="dicionario-modal-content">
-      <div class="dicionario-modal-header">
-        <h3>Editar Descrição</h3>
-        <span class="dicionario-modal-close">&times;</span>
-      </div>
-      <div class="dicionario-modal-body">
-        <label>Palavra/Frase:</label>
-        <input type="text" value="${word}" readonly>
-        <label>Descrição:</label>
-        <textarea id="dicionario-desc" rows="3">${currentDesc}</textarea>
-        <button id="dicionario-save">Salvar</button>
-        <button id="dicionario-delete" style="background: #dc3545;">Excluir</button>
-        <div id="dicionario-message"></div>
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(modal);
-  
-  // Event listeners
-  modal.querySelector('.dicionario-modal-close').onclick = hideModal;
-  modal.onclick = function(e) {
-    if (e.target === modal) hideModal();
-  };
-  
-  modal.querySelector('#dicionario-save').onclick = function() {
-    const desc = modal.querySelector('#dicionario-desc').value.trim();
-    
-    if (!desc) {
-      modal.querySelector('#dicionario-message').textContent = 'A descrição não pode estar vazia!';
-      return;
-    }
-    
-    dictionary[word] = desc;
-    chrome.storage.sync.set({dictionary: dictionary}, function() {
-      modal.querySelector('#dicionario-message').textContent = 'Atualizado com sucesso!';
-      setTimeout(() => {
-        hideModal();
-        highlightWords();
-      }, 1000);
-    });
-  };
-  
-  modal.querySelector('#dicionario-delete').onclick = function() {
-    if (confirm('Tem certeza que deseja excluir esta entrada?')) {
-      delete dictionary[word];
-      chrome.storage.sync.set({dictionary: dictionary}, function() {
-        hideModal();
-        highlightWords();
-      });
-    }
-  };
-};
+  showModal(word);
+}
+
+// Torna a função disponível globalmente para o popup
+window.editWordFromTooltip = editWordFromTooltip;
+window.showModal = showModal;
 
 // Event listeners para esconder elementos ao clicar fora
 document.addEventListener('click', function(e) {
@@ -293,15 +325,16 @@ chrome.storage.onChanged.addListener(function(changes, namespace) {
 const style = document.createElement('style');
 style.textContent = `
   .dicionario-highlight {
-    background: rgba(255, 255, 0, 0.3);
+    background: transparent;
     cursor: help;
-    border-radius: 3px;
-    padding: 1px 2px;
-    transition: background 0.2s;
+    border-bottom: 2px dotted #ffd700;
+    text-decoration: none;
+    transition: border-color 0.2s;
   }
   
   .dicionario-highlight:hover {
-    background: rgba(255, 255, 0, 0.6);
+    border-bottom-color: #ffb000;
+    border-bottom-width: 3px;
   }
   
   .dicionario-selection-btn {
@@ -341,16 +374,17 @@ style.textContent = `
   }
   
   .dicionario-modal-content {
-    background: white;
+    background: #2d3748;
     border-radius: 8px;
     width: 90%;
     max-width: 400px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    color: #e2e8f0;
   }
   
   .dicionario-modal-header {
     padding: 15px 20px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #4a5568;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -358,17 +392,17 @@ style.textContent = `
   
   .dicionario-modal-header h3 {
     margin: 0;
-    color: #333;
+    color: #f7fafc;
   }
   
   .dicionario-modal-close {
     font-size: 24px;
     cursor: pointer;
-    color: #999;
+    color: #a0aec0;
   }
   
   .dicionario-modal-close:hover {
-    color: #333;
+    color: #f7fafc;
   }
   
   .dicionario-modal-body {
@@ -379,17 +413,32 @@ style.textContent = `
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
-    color: #333;
+    color: #f7fafc;
   }
   
   .dicionario-modal-body input,
   .dicionario-modal-body textarea {
     width: 100%;
     padding: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid #4a5568;
     border-radius: 4px;
     margin-bottom: 10px;
     font-family: inherit;
+    background: #1a202c;
+    color: #e2e8f0;
+  }
+  
+  .dicionario-modal-body input:focus,
+  .dicionario-modal-body textarea:focus {
+    outline: none;
+    border-color: #4299e1;
+    box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
+  }
+  
+  .dicionario-modal-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
   }
   
   .dicionario-modal-body button {
@@ -399,12 +448,19 @@ style.textContent = `
     padding: 10px 20px;
     border-radius: 4px;
     cursor: pointer;
-    margin-right: 10px;
-    margin-bottom: 10px;
+    flex: 1;
   }
   
   .dicionario-modal-body button:hover {
     background: #005a8a;
+  }
+  
+  .dicionario-delete-btn {
+    background: #dc3545 !important;
+  }
+  
+  .dicionario-delete-btn:hover {
+    background: #c82333 !important;
   }
   
   .dicionario-tooltip {
@@ -417,17 +473,26 @@ style.textContent = `
     max-width: 250px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.3);
     pointer-events: auto;
+    transition: opacity 0.2s;
   }
   
-  .dicionario-tooltip-content strong {
+  .dicionario-tooltip:hover {
+    opacity: 1;
+  }
+  
+  .dicionario-tooltip-word {
     display: block;
     margin-bottom: 5px;
     color: #ffd700;
+    user-select: text;
+    cursor: text;
   }
   
-  .dicionario-tooltip-content p {
+  .dicionario-tooltip-desc {
     margin: 0 0 10px 0;
     line-height: 1.4;
+    user-select: text;
+    cursor: text;
   }
   
   .dicionario-edit-btn {
@@ -446,9 +511,17 @@ style.textContent = `
   
   #dicionario-message {
     margin-top: 10px;
-    padding: 5px;
-    border-radius: 3px;
+    padding: 8px;
+    border-radius: 4px;
     font-size: 14px;
+    text-align: center;
+    font-weight: bold;
+    transition: all 0.3s ease;
+  }
+  
+  #dicionario-message:not(:empty) {
+    border: 1px solid currentColor;
+    background: rgba(0, 0, 0, 0.3);
   }
 `;
 document.head.appendChild(style);

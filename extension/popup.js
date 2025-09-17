@@ -28,14 +28,16 @@ window.editWord = function(word, desc) {
   chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
     chrome.scripting.executeScript({
       target: {tabId: tabs[0].id},
-      func: (word, desc) => {
-        if (typeof window.editWord === 'function') {
-          window.editWord(word, desc);
+      func: (word) => {
+        if (typeof editWordFromTooltip === 'function') {
+          editWordFromTooltip(word);
+        } else if (typeof showModal === 'function') {
+          showModal(word);
         } else {
           alert('Abra uma página da web para editar suas palavras.');
         }
       },
-      args: [word, desc]
+      args: [word]
     });
   });
   
