@@ -71,6 +71,25 @@ function clearAllWords() {
   }
 }
 
+// Função para abrir configuração de IA
+function openAIConfig() {
+  chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+    chrome.scripting.executeScript({
+      target: {tabId: tabs[0].id},
+      func: () => {
+        if (typeof showAIConfigModal === 'function') {
+          showAIConfigModal();
+        } else {
+          alert('Abra uma página da web para configurar a IA.');
+        }
+      }
+    });
+  });
+  
+  // Fecha o popup
+  window.close();
+}
+
 // Função para editar palavra (abre modal na página atual)
 window.editWord = function(word, desc) {
   chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
@@ -101,6 +120,12 @@ document.addEventListener('DOMContentLoaded', function() {
   const clearBtn = document.getElementById('clearAllBtn');
   if (clearBtn) {
     clearBtn.addEventListener('click', clearAllWords);
+  }
+  
+  // Adiciona event listener para o ícone de configuração de IA
+  const aiConfigIcon = document.getElementById('aiConfigIcon');
+  if (aiConfigIcon) {
+    aiConfigIcon.addEventListener('click', openAIConfig);
   }
 });
 
