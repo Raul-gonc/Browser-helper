@@ -429,10 +429,62 @@ function updateModelOptions(provider, configModal) {
   });
 }
 
+// Função para coletar contexto da página
+function getPageContext(word) {
+  const context = {
+    pageTitle: document.title,
+    pageUrl: window.location.href,
+    wordOccurrences: []
+  };
+  
+  // Busca trechos onde a palavra aparece
+  const walker = document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode: function(node) {
+        // Ignora scripts, styles e outros elementos não visíveis
+        const parent = node.parentElement;
+        if (!parent || ['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(parent.tagName)) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    }
+  );
+  
+  const wordRegex = new RegExp(`\\b${escapeRegExp(word)}\\b`, 'gi');
+  let textNode;
+  
+  while (textNode = walker.nextNode()) {
+    const text = textNode.textContent;
+    const matches = text.match(wordRegex);
+    
+    if (matches && matches.length > 0) {
+      // Extrai contexto ao redor da palavra (50 caracteres antes e depois)
+      const wordIndex = text.toLowerCase().indexOf(word.toLowerCase());
+      if (wordIndex !== -1) {
+        const start = Math.max(0, wordIndex - 50);
+        const end = Math.min(text.length, wordIndex + word.length + 50);
+        const excerpt = text.substring(start, end).trim();
+        
+        if (excerpt && context.wordOccurrences.length < 3) { // Limita a 3 ocorrências
+          context.wordOccurrences.push(excerpt);
+        }
+      }
+    }
+  }
+  
+  return context;
+}
+
 async function generateAIDescription(word) {
   const aiBtn = modal.querySelector('#dicionario-ai-btn');
   const descField = modal.querySelector('#dicionario-desc');
   const messageDiv = modal.querySelector('#dicionario-message');
+  
+  // Coleta contexto da página
+  const pageContext = getPageContext(word);
   
   // Verifica se há configuração de IA
   chrome.storage.sync.get({aiConfig: {}}, async function(data) {
@@ -455,13 +507,13 @@ async function generateAIDescription(word) {
       
       switch (config.provider) {
         case 'openai':
-          description = await callOpenAI(word, config);
+          description = await callOpenAI(word, config, pageContext);
           break;
         case 'anthropic':
-          description = await callClaude(word, config);
+          description = await callClaude(word, config, pageContext);
           break;
         case 'google':
-          description = await callGemini(word, config);
+          description = await callGemini(word, config, pageContext);
           break;
         default:
           throw new Error('Provedor não suportado');
@@ -482,7 +534,23 @@ async function generateAIDescription(word) {
   });
 }
 
-async function callOpenAI(word, config) {
+async function callOpenAI(word, config, pageContext) {
+  // Constrói o prompt com contexto
+  let contextPrompt = `Defina brevemente a palavra ou frase: "${word}"`;
+  
+  if (pageContext.pageTitle) {
+    contextPrompt += `\n\nContexto da página: "${pageContext.pageTitle}"`;
+  }
+  
+  if (pageContext.wordOccurrences && pageContext.wordOccurrences.length > 0) {
+    contextPrompt += `\n\nTrechos onde a palavra aparece:`;
+    pageContext.wordOccurrences.forEach((excerpt, index) => {
+      contextPrompt += `\n${index + 1}. "${excerpt}"`;
+    });
+  }
+  
+  contextPrompt += `\n\nCom base no contexto acima, forneça uma definição clara e específica da palavra/frase.`;
+  
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -494,14 +562,14 @@ async function callOpenAI(word, config) {
       messages: [
         {
           role: 'system',
-          content: 'Você é um assistente que cria definições claras e concisas para palavras e frases. Responda apenas com a definição, sem explicações adicionais.'
+          content: 'Você é um assistente que cria definições claras e concisas para palavras e frases baseando-se no contexto fornecido. Responda apenas com a definição, sem explicações adicionais ou menção do contexto.'
         },
         {
           role: 'user',
-          content: `Defina brevemente a palavra ou frase: "${word}"`
+          content: contextPrompt
         }
       ],
-      max_tokens: 150,
+      max_tokens: 200,
       temperature: 0.7
     })
   });
@@ -514,7 +582,23 @@ async function callOpenAI(word, config) {
   return data.choices[0].message.content;
 }
 
-async function callClaude(word, config) {
+async function callClaude(word, config, pageContext) {
+  // Constrói o prompt com contexto
+  let contextPrompt = `Defina brevemente a palavra ou frase: "${word}"`;
+  
+  if (pageContext.pageTitle) {
+    contextPrompt += `\n\nContexto da página: "${pageContext.pageTitle}"`;
+  }
+  
+  if (pageContext.wordOccurrences && pageContext.wordOccurrences.length > 0) {
+    contextPrompt += `\n\nTrechos onde a palavra aparece:`;
+    pageContext.wordOccurrences.forEach((excerpt, index) => {
+      contextPrompt += `\n${index + 1}. "${excerpt}"`;
+    });
+  }
+  
+  contextPrompt += `\n\nCom base no contexto acima, forneça uma definição clara e específica da palavra/frase. Responda apenas com a definição, sem explicações adicionais ou menção do contexto.`;
+  
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -524,11 +608,11 @@ async function callClaude(word, config) {
     },
     body: JSON.stringify({
       model: config.model,
-      max_tokens: 150,
+      max_tokens: 200,
       messages: [
         {
           role: 'user',
-          content: `Defina brevemente a palavra ou frase: "${word}". Responda apenas com a definição, sem explicações adicionais.`
+          content: contextPrompt
         }
       ]
     })
@@ -542,7 +626,23 @@ async function callClaude(word, config) {
   return data.content[0].text;
 }
 
-async function callGemini(word, config) {
+async function callGemini(word, config, pageContext) {
+  // Constrói o prompt com contexto
+  let contextPrompt = `Defina brevemente a palavra ou frase: "${word}"`;
+  
+  if (pageContext.pageTitle) {
+    contextPrompt += `\n\nContexto da página: "${pageContext.pageTitle}"`;
+  }
+  
+  if (pageContext.wordOccurrences && pageContext.wordOccurrences.length > 0) {
+    contextPrompt += `\n\nTrechos onde a palavra aparece:`;
+    pageContext.wordOccurrences.forEach((excerpt, index) => {
+      contextPrompt += `\n${index + 1}. "${excerpt}"`;
+    });
+  }
+  
+  contextPrompt += `\n\nCom base no contexto acima, forneça uma definição clara e específica da palavra/frase. Responda apenas com a definição, sem explicações adicionais ou menção do contexto.`;
+  
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`, {
     method: 'POST',
     headers: {
@@ -553,13 +653,13 @@ async function callGemini(word, config) {
         {
           parts: [
             {
-              text: `Defina brevemente a palavra ou frase: "${word}". Responda apenas com a definição, sem explicações adicionais.`
+              text: contextPrompt
             }
           ]
         }
       ],
       generationConfig: {
-        maxOutputTokens: 150,
+        maxOutputTokens: 200,
         temperature: 0.7
       }
     })
