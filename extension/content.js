@@ -314,11 +314,14 @@ function showAIConfigModal() {
     <div class="dicionario-modal-content">
       <div class="dicionario-modal-header">
         <h3>⚙️ Configuração da IA</h3>
-        <span class="dicionario-modal-close" onclick="this.parentElement.parentElement.parentElement.remove()">&times;</span>
+        <div class="dicionario-header-buttons">
+          <span class="dicionario-modal-close">&times;</span>
+        </div>
       </div>
       <div class="dicionario-modal-body">
         <label>Provedor de IA:</label>
         <select id="ai-provider">
+          <option value="">Selecione um provedor...</option>
           <option value="openai">ChatGPT (OpenAI)</option>
           <option value="anthropic">Claude (Anthropic)</option>
           <option value="google">Gemini (Google)</option>
@@ -328,18 +331,13 @@ function showAIConfigModal() {
         <input type="password" id="ai-api-key" placeholder="Sua chave da API">
         
         <label>Modelo:</label>
-        <select id="ai-model">
-          <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-          <option value="gpt-4">GPT-4</option>
-          <option value="claude-3-sonnet">Claude 3 Sonnet</option>
-          <option value="claude-3-opus">Claude 3 Opus</option>
-          <option value="gemini-pro">Gemini Pro</option>
-          <option value="gemini-pro-vision">Gemini Pro Vision</option>
+        <select id="ai-model" disabled>
+          <option value="">Selecione um provedor primeiro</option>
         </select>
         
         <div class="dicionario-modal-buttons">
           <button id="save-ai-config">Salvar Configuração</button>
-          <button onclick="this.closest('.dicionario-modal').remove()">Cancelar</button>
+          <button id="cancel-ai-config">Cancelar</button>
         </div>
         
         <div class="ai-info">
@@ -356,43 +354,79 @@ function showAIConfigModal() {
   
   document.body.appendChild(configModal);
   
+  // Event listeners do modal
+  configModal.querySelector('.dicionario-modal-close').onclick = function() {
+    configModal.remove();
+  };
+  
+  configModal.querySelector('#cancel-ai-config').onclick = function() {
+    configModal.remove();
+  };
+  
+  configModal.onclick = function(e) {
+    if (e.target === configModal) configModal.remove();
+  };
+  
   // Carrega configurações salvas
   chrome.storage.sync.get({aiConfig: {}}, function(data) {
     const config = data.aiConfig;
     if (config.provider) {
       configModal.querySelector('#ai-provider').value = config.provider;
       updateModelOptions(config.provider, configModal);
+      if (config.model) {
+        configModal.querySelector('#ai-model').value = config.model;
+      }
     }
     if (config.apiKey) {
       configModal.querySelector('#ai-api-key').value = config.apiKey;
-    }
-    if (config.model) {
-      configModal.querySelector('#ai-model').value = config.model;
     }
   });
   
   // Event listener para mudança de provedor
   configModal.querySelector('#ai-provider').onchange = function() {
-    updateModelOptions(this.value, configModal);
+    const selectedProvider = this.value;
+    const modelSelect = configModal.querySelector('#ai-model');
+    
+    if (selectedProvider) {
+      modelSelect.disabled = false;
+      updateModelOptions(selectedProvider, configModal);
+    } else {
+      modelSelect.disabled = true;
+      modelSelect.innerHTML = '<option value="">Selecione um provedor primeiro</option>';
+    }
   };
   
   // Event listener para salvar configuração
   configModal.querySelector('#save-ai-config').onclick = function() {
-    const config = {
-      provider: configModal.querySelector('#ai-provider').value,
-      apiKey: configModal.querySelector('#ai-api-key').value.trim(),
-      model: configModal.querySelector('#ai-model').value
-    };
+    const provider = configModal.querySelector('#ai-provider').value;
+    const apiKey = configModal.querySelector('#ai-api-key').value.trim();
+    const model = configModal.querySelector('#ai-model').value;
+    const messageDiv = configModal.querySelector('#ai-config-message');
     
-    if (!config.apiKey) {
-      configModal.querySelector('#ai-config-message').textContent = 'Por favor, insira a API Key!';
-      configModal.querySelector('#ai-config-message').style.color = '#dc3545';
+    // Validações
+    if (!provider) {
+      messageDiv.textContent = 'Por favor, selecione um provedor!';
+      messageDiv.style.color = '#fc8181';
       return;
     }
     
+    if (!apiKey) {
+      messageDiv.textContent = 'Por favor, insira a API Key!';
+      messageDiv.style.color = '#fc8181';
+      return;
+    }
+    
+    if (!model) {
+      messageDiv.textContent = 'Por favor, selecione um modelo!';
+      messageDiv.style.color = '#fc8181';
+      return;
+    }
+    
+    const config = { provider, apiKey, model };
+    
     chrome.storage.sync.set({aiConfig: config}, function() {
-      configModal.querySelector('#ai-config-message').textContent = 'Configuração salva!';
-      configModal.querySelector('#ai-config-message').style.color = '#28a745';
+      messageDiv.textContent = 'Configuração salva!';
+      messageDiv.style.color = '#68d391';
       setTimeout(() => {
         configModal.remove();
       }, 1500);
@@ -404,28 +438,50 @@ function updateModelOptions(provider, configModal) {
   const modelSelect = configModal.querySelector('#ai-model');
   modelSelect.innerHTML = '';
   
+  if (!provider) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'Selecione um provedor primeiro';
+    modelSelect.appendChild(option);
+    return;
+  }
+  
+  // Adiciona opção padrão
+  const defaultOption = document.createElement('option');
+  defaultOption.value = '';
+  defaultOption.textContent = 'Selecione um modelo...';
+  modelSelect.appendChild(defaultOption);
+  
   const models = {
     openai: [
-      {value: 'gpt-3.5-turbo', text: 'GPT-3.5 Turbo'},
-      {value: 'gpt-4', text: 'GPT-4'},
-      {value: 'gpt-4-turbo', text: 'GPT-4 Turbo'}
+        { value: 'gpt-5', text: 'GPT-5' },
+        { value: 'gpt-5-mini', text: 'GPT-5 Mini' },
+        { value: 'gpt-5-nano', text: 'GPT-5 Nano' },
+        { value: 'gpt-4o', text: 'GPT-4o' },
+        { value: 'gpt-4o-mini', text: 'GPT-4o Mini' }
     ],
     anthropic: [
-      {value: 'claude-3-haiku-20240307', text: 'Claude 3 Haiku'},
-      {value: 'claude-3-sonnet-20240229', text: 'Claude 3 Sonnet'},
-      {value: 'claude-3-opus-20240229', text: 'Claude 3 Opus'}
+        { value: 'claude-opus-4-1-20250805', text: 'Claude Opus 4.1' },
+        { value: 'claude-sonnet-4-20250514', text: 'Claude Sonnet 4' },
+        { value: 'claude-3-7-sonnet-20250219', text: 'Claude 3.7 Sonnet' },
+        { value: 'claude-3-5-haiku-20241022', text: 'Claude 3.5 Haiku' },
+        { value: 'claude-3-haiku-20240307', text: 'Claude 3 Haiku' }
     ],
     google: [
-      {value: 'gemini-2.5-flash-lite', text: 'Gemini 2.5 Flash Lite'},
+        { value: 'gemini-2.5-pro', text: 'Gemini 2.5 Pro' },
+        { value: 'gemini-2.5-flash', text: 'Gemini 2.5 Flash' },
+        { value: 'gemini-2.5-flash-lite', text: 'Gemini 2.5 Flash Lite' }
     ]
-  };
+    };
   
-  models[provider].forEach(model => {
-    const option = document.createElement('option');
-    option.value = model.value;
-    option.textContent = model.text;
-    modelSelect.appendChild(option);
-  });
+  if (models[provider]) {
+    models[provider].forEach(model => {
+      const option = document.createElement('option');
+      option.value = model.value;
+      option.textContent = model.text;
+      modelSelect.appendChild(option);
+    });
+  }
 }
 
 // Função para coletar contexto da página
@@ -865,6 +921,13 @@ style.textContent = `
     border-color: rgba(66, 153, 225, 0.6);
     background: rgba(26, 32, 44, 0.8);
     box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+  }
+  
+  .dicionario-modal-body select:disabled {
+    background: rgba(26, 32, 44, 0.3);
+    color: #6b7280;
+    border-color: rgba(74, 85, 104, 0.2);
+    cursor: not-allowed;
   }
   
   .dicionario-modal-body textarea {
