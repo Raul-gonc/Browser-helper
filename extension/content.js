@@ -114,12 +114,15 @@ function showModal(selectedText) {
     <div class="dicionario-modal-content">
       <div class="dicionario-modal-header">
         <h3>${modalTitle}</h3>
-        <span class="dicionario-modal-close">&times;</span>
+        <div class="dicionario-header-buttons">
+          <button id="dicionario-config" class="dicionario-config-header-btn" title="Configurar IA">⚙️</button>
+          <span class="dicionario-modal-close">&times;</span>
+        </div>
       </div>
       <div class="dicionario-modal-body">
         <label>Palavra/Frase:</label>
         <input type="text" id="dicionario-word" value="${selectedText}" readonly>
-        <label>Descrição:</label>
+        <label>Descrição: <button id="dicionario-ai-btn" class="dicionario-ai-btn-inline" title="Gerar descrição com IA">🤖 IA</button></label>
         <textarea id="dicionario-desc" placeholder="Digite a descrição..." rows="3">${existingDesc}</textarea>
         <div class="dicionario-modal-buttons">
           <button id="dicionario-save">${buttonText}</button>
@@ -177,6 +180,18 @@ function showModal(selectedText) {
       }
     };
   }
+  
+  // Event listener para botão de IA
+  modal.querySelector('#dicionario-ai-btn').onclick = function(e) {
+    e.preventDefault();
+    generateAIDescription(selectedText);
+  };
+  
+  // Event listener para botão de configuração
+  modal.querySelector('#dicionario-config').onclick = function(e) {
+    e.preventDefault();
+    showAIConfigModal();
+  };
   
   // Foca no campo de descrição e seleciona o texto se estiver editando
   const descField = modal.querySelector('#dicionario-desc');
@@ -292,6 +307,272 @@ function editWordFromTooltip(word, currentDesc) {
   showModal(word);
 }
 
+// Funções para integração com IA
+function showAIConfigModal() {
+  const configModal = document.createElement('div');
+  configModal.className = 'dicionario-modal';
+  configModal.innerHTML = `
+    <div class="dicionario-modal-content">
+      <div class="dicionario-modal-header">
+        <h3>⚙️ Configuração da IA</h3>
+        <span class="dicionario-modal-close" onclick="this.parentElement.parentElement.parentElement.remove()">&times;</span>
+      </div>
+      <div class="dicionario-modal-body">
+        <label>Provedor de IA:</label>
+        <select id="ai-provider">
+          <option value="openai">ChatGPT (OpenAI)</option>
+          <option value="anthropic">Claude (Anthropic)</option>
+          <option value="google">Gemini (Google)</option>
+        </select>
+        
+        <label>API Key:</label>
+        <input type="password" id="ai-api-key" placeholder="Sua chave da API">
+        
+        <label>Modelo:</label>
+        <select id="ai-model">
+          <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+          <option value="gpt-4">GPT-4</option>
+          <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+          <option value="claude-3-opus">Claude 3 Opus</option>
+          <option value="gemini-pro">Gemini Pro</option>
+          <option value="gemini-pro-vision">Gemini Pro Vision</option>
+        </select>
+        
+        <div class="dicionario-modal-buttons">
+          <button id="save-ai-config">Salvar Configuração</button>
+          <button onclick="this.closest('.dicionario-modal').remove()">Cancelar</button>
+        </div>
+        
+        <div class="ai-info">
+          <p><strong>Como obter as chaves:</strong></p>
+          <p>• <strong>OpenAI:</strong> platform.openai.com/api-keys</p>
+          <p>• <strong>Anthropic:</strong> console.anthropic.com/</p>
+          <p>• <strong>Google:</strong> aistudio.google.com/app/apikey</p>
+        </div>
+        
+        <div id="ai-config-message"></div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(configModal);
+  
+  // Carrega configurações salvas
+  chrome.storage.sync.get({aiConfig: {}}, function(data) {
+    const config = data.aiConfig;
+    if (config.provider) {
+      configModal.querySelector('#ai-provider').value = config.provider;
+      updateModelOptions(config.provider, configModal);
+    }
+    if (config.apiKey) {
+      configModal.querySelector('#ai-api-key').value = config.apiKey;
+    }
+    if (config.model) {
+      configModal.querySelector('#ai-model').value = config.model;
+    }
+  });
+  
+  // Event listener para mudança de provedor
+  configModal.querySelector('#ai-provider').onchange = function() {
+    updateModelOptions(this.value, configModal);
+  };
+  
+  // Event listener para salvar configuração
+  configModal.querySelector('#save-ai-config').onclick = function() {
+    const config = {
+      provider: configModal.querySelector('#ai-provider').value,
+      apiKey: configModal.querySelector('#ai-api-key').value.trim(),
+      model: configModal.querySelector('#ai-model').value
+    };
+    
+    if (!config.apiKey) {
+      configModal.querySelector('#ai-config-message').textContent = 'Por favor, insira a API Key!';
+      configModal.querySelector('#ai-config-message').style.color = '#dc3545';
+      return;
+    }
+    
+    chrome.storage.sync.set({aiConfig: config}, function() {
+      configModal.querySelector('#ai-config-message').textContent = 'Configuração salva!';
+      configModal.querySelector('#ai-config-message').style.color = '#28a745';
+      setTimeout(() => {
+        configModal.remove();
+      }, 1500);
+    });
+  };
+}
+
+function updateModelOptions(provider, configModal) {
+  const modelSelect = configModal.querySelector('#ai-model');
+  modelSelect.innerHTML = '';
+  
+  const models = {
+    openai: [
+      {value: 'gpt-3.5-turbo', text: 'GPT-3.5 Turbo'},
+      {value: 'gpt-4', text: 'GPT-4'},
+      {value: 'gpt-4-turbo', text: 'GPT-4 Turbo'}
+    ],
+    anthropic: [
+      {value: 'claude-3-haiku-20240307', text: 'Claude 3 Haiku'},
+      {value: 'claude-3-sonnet-20240229', text: 'Claude 3 Sonnet'},
+      {value: 'claude-3-opus-20240229', text: 'Claude 3 Opus'}
+    ],
+    google: [
+      {value: 'gemini-2.5-flash-lite', text: 'Gemini 2.5 Flash Lite'},
+    ]
+  };
+  
+  models[provider].forEach(model => {
+    const option = document.createElement('option');
+    option.value = model.value;
+    option.textContent = model.text;
+    modelSelect.appendChild(option);
+  });
+}
+
+async function generateAIDescription(word) {
+  const aiBtn = modal.querySelector('#dicionario-ai-btn');
+  const descField = modal.querySelector('#dicionario-desc');
+  const messageDiv = modal.querySelector('#dicionario-message');
+  
+  // Verifica se há configuração de IA
+  chrome.storage.sync.get({aiConfig: {}}, async function(data) {
+    const config = data.aiConfig;
+    
+    if (!config.apiKey || !config.provider) {
+      messageDiv.textContent = 'Configure a IA primeiro clicando em "⚙️ Config IA"';
+      messageDiv.style.color = '#dc3545';
+      return;
+    }
+    
+    // Mostra estado de carregamento
+    aiBtn.textContent = '⏳ Gerando...';
+    aiBtn.disabled = true;
+    messageDiv.textContent = 'Gerando descrição...';
+    messageDiv.style.color = '#007cba';
+    
+    try {
+      let description;
+      
+      switch (config.provider) {
+        case 'openai':
+          description = await callOpenAI(word, config);
+          break;
+        case 'anthropic':
+          description = await callClaude(word, config);
+          break;
+        case 'google':
+          description = await callGemini(word, config);
+          break;
+        default:
+          throw new Error('Provedor não suportado');
+      }
+      
+      descField.value = description.trim();
+      messageDiv.textContent = 'Descrição gerada com sucesso!';
+      messageDiv.style.color = '#28a745';
+      
+    } catch (error) {
+      console.error('Erro ao gerar descrição:', error);
+      messageDiv.textContent = 'Erro ao gerar descrição: ' + error.message;
+      messageDiv.style.color = '#dc3545';
+    } finally {
+      aiBtn.textContent = '🤖 IA';
+      aiBtn.disabled = false;
+    }
+  });
+}
+
+async function callOpenAI(word, config) {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${config.apiKey}`
+    },
+    body: JSON.stringify({
+      model: config.model,
+      messages: [
+        {
+          role: 'system',
+          content: 'Você é um assistente que cria definições claras e concisas para palavras e frases. Responda apenas com a definição, sem explicações adicionais.'
+        },
+        {
+          role: 'user',
+          content: `Defina brevemente a palavra ou frase: "${word}"`
+        }
+      ],
+      max_tokens: 150,
+      temperature: 0.7
+    })
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Erro da API: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+async function callClaude(word, config) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': config.apiKey,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: config.model,
+      max_tokens: 150,
+      messages: [
+        {
+          role: 'user',
+          content: `Defina brevemente a palavra ou frase: "${word}". Responda apenas com a definição, sem explicações adicionais.`
+        }
+      ]
+    })
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Erro da API: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  return data.content[0].text;
+}
+
+async function callGemini(word, config) {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            {
+              text: `Defina brevemente a palavra ou frase: "${word}". Responda apenas com a definição, sem explicações adicionais.`
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        maxOutputTokens: 150,
+        temperature: 0.7
+      }
+    })
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Erro da API: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  return data.candidates[0].content.parts[0].text;
+}
+
 // Torna a função disponível globalmente para o popup
 window.editWordFromTooltip = editWordFromTooltip;
 window.showModal = showModal;
@@ -395,6 +676,32 @@ style.textContent = `
     color: #f7fafc;
   }
   
+  .dicionario-header-buttons {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .dicionario-config-header-btn {
+    background: #4a5568;
+    color: #e2e8f0;
+    border: none;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+  
+  .dicionario-config-header-btn:hover {
+    background: #2d3748;
+  }
+  
   .dicionario-modal-close {
     font-size: 24px;
     cursor: pointer;
@@ -435,10 +742,33 @@ style.textContent = `
     box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
   }
   
+  .dicionario-ai-btn-inline {
+    background: #8b5cf6 !important;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-left: 8px;
+    vertical-align: middle;
+    transition: background 0.2s;
+  }
+  
+  .dicionario-ai-btn-inline:hover {
+    background: #7c3aed !important;
+  }
+  
+  .dicionario-ai-btn-inline:disabled {
+    background: #6b7280 !important;
+    cursor: not-allowed;
+  }
+  
   .dicionario-modal-buttons {
     display: flex;
     gap: 10px;
     margin-bottom: 10px;
+    flex-wrap: wrap;
   }
   
   .dicionario-modal-body button {
@@ -449,6 +779,7 @@ style.textContent = `
     border-radius: 4px;
     cursor: pointer;
     flex: 1;
+    min-width: 100px;
   }
   
   .dicionario-modal-body button:hover {
@@ -461,6 +792,35 @@ style.textContent = `
   
   .dicionario-delete-btn:hover {
     background: #c82333 !important;
+  }
+  
+
+  
+  .dicionario-modal-body select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #4a5568;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-family: inherit;
+    background: #1a202c;
+    color: #e2e8f0;
+  }
+  
+  .ai-info {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 12px;
+  }
+  
+  .ai-info p {
+    margin: 5px 0;
+  }
+  
+  .ai-info strong {
+    color: #4299e1;
   }
   
   .dicionario-tooltip {
