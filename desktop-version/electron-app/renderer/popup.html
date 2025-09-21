@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+    <title>Definição</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-size: 13px;
+            line-height: 1.4;
+            background: #ffffff;
+            border: 2px solid #0066cc;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+
+        .popup-container {
+            padding: 12px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .popup-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #e5e5e5;
+        }
+
+        .word-title {
+            font-weight: 600;
+            color: #0066cc;
+            font-size: 14px;
+            margin: 0;
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            color: #666;
+            padding: 2px 6px;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .definition-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2px 0;
+        }
+
+        .definition-text {
+            color: #333;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .definition-text.not-found {
+            color: #666;
+            font-style: italic;
+        }
+
+        .popup-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px solid #e5e5e5;
+        }
+
+        .btn {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #f8f9fa;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+            flex: 1;
+        }
+
+        .btn:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .btn-primary {
+            background: #0066cc;
+            color: white;
+            border-color: #0066cc;
+        }
+
+        .btn-primary:hover {
+            background: #0052a3;
+            border-color: #0052a3;
+        }
+
+        .btn-ai {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+
+        .btn-ai:hover {
+            background: #218838;
+            border-color: #1e7e34;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #0066cc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 4px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .ai-status {
+            font-size: 10px;
+            color: #666;
+            margin-top: 4px;
+            text-align: center;
+        }
+
+        /* Scrollbar personalizado */
+        .definition-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .definition-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 2px;
+        }
+
+        .definition-content::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 2px;
+        }
+
+        .definition-content::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <div class="popup-container">
+        <div class="popup-header">
+            <h3 id="wordTitle" class="word-title">Carregando...</h3>
+            <button class="close-btn" onclick="closePopup()" title="Fechar (Esc)">×</button>
+        </div>
+        
+        <div class="definition-content">
+            <div id="definitionText" class="definition-text">
+                Carregando definição...
+            </div>
+        </div>
+        
+        <div class="popup-actions">
+            <button id="editBtn" class="btn btn-primary" onclick="editDefinition()" title="Adicionar/editar definição">
+                ✏️ Editar
+            </button>
+            <button id="aiBtn" class="btn btn-ai" onclick="generateDefinition()" title="Gerar definição com IA">
+                🤖 IA
+            </button>
+        </div>
+        
+        <div id="aiStatus" class="ai-status" style="display: none;"></div>
+    </div>
+
+    <script>
+        let currentWord = '';
+        let currentDefinition = '';
+
+        // Recebe dados do processo principal
+        window.electronAPI.onShowDefinition((event, data) => {
+            currentWord = data.word;
+            currentDefinition = data.definition;
+            updatePopupContent();
+        });
+
+        function updatePopupContent() {
+            const wordTitle = document.getElementById('wordTitle');
+            const definitionText = document.getElementById('definitionText');
+            
+            wordTitle.textContent = currentWord;
+            
+            if (currentDefinition) {
+                definitionText.textContent = currentDefinition;
+                definitionText.classList.remove('not-found');
+            } else {
+                definitionText.textContent = 'Definição não encontrada. Clique em "Editar" para adicionar.';
+                definitionText.classList.add('not-found');
+            }
+        }
+
+        function closePopup() {
+            window.close();
+        }
+
+        function editDefinition() {
+            // Aqui abriríamos um modal de edição ou a janela principal
+            // Por enquanto, vamos mostrar um prompt simples
+            const newDefinition = prompt(`Definição para "${currentWord}":`, currentDefinition || '');
+            
+            if (newDefinition !== null) {
+                window.electronAPI.saveWord(currentWord, newDefinition).then(() => {
+                    currentDefinition = newDefinition;
+                    updatePopupContent();
+                });
+            }
+        }
+
+        async function generateDefinition() {
+            const aiBtn = document.getElementById('aiBtn');
+            const aiStatus = document.getElementById('aiStatus');
+            
+            // Mostra loading
+            aiBtn.innerHTML = '<span class="loading"></span>Gerando...';
+            aiBtn.disabled = true;
+            aiStatus.style.display = 'block';
+            aiStatus.textContent = 'Gerando definição com IA...';
+            
+            try {
+                const definition = await window.electronAPI.generateAIDefinition(currentWord, 'openai');
+                
+                if (definition) {
+                    currentDefinition = definition;
+                    await window.electronAPI.saveWord(currentWord, definition);
+                    updatePopupContent();
+                    aiStatus.textContent = 'Definição gerada com sucesso!';
+                    setTimeout(() => {
+                        aiStatus.style.display = 'none';
+                    }, 2000);
+                } else {
+                    throw new Error('Não foi possível gerar definição');
+                }
+                
+            } catch (error) {
+                console.error('Erro ao gerar definição:', error);
+                aiStatus.textContent = 'Erro ao gerar definição. Verifique as configurações de IA.';
+                setTimeout(() => {
+                    aiStatus.style.display = 'none';
+                }, 3000);
+            } finally {
+                // Restaura botão
+                aiBtn.innerHTML = '🤖 IA';
+                aiBtn.disabled = false;
+            }
+        }
+
+        // Fecha com Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closePopup();
+            }
+        });
+
+        // Fecha ao clicar fora (se perder foco)
+        window.addEventListener('blur', () => {
+            setTimeout(() => {
+                if (document.hasFocus() === false) {
+                    closePopup();
+                }
+            }, 100);
+        });
+    </script>
+</body>
+</html>
