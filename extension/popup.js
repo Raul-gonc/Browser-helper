@@ -21,7 +21,7 @@ function loadDictionary() {
     }
     
     if (!dictionary || totalWords === 0) {
-      listElement.innerHTML = '<div class="empty-state">Nenhuma palavra salva ainda.<br><br>Selecione uma palavra em qualquer página e clique no botão 📝 para começar!</div>';
+      listElement.innerHTML = `<div class="empty-state">${i18n.t('emptyStateMessage')}</div>`;
       return;
     }
     
@@ -47,7 +47,7 @@ function loadDictionary() {
 
 // Função para limpar todas as palavras
 function clearAllWords() {
-  if (confirm('⚠️ Tem certeza que deseja excluir TODAS as palavras do dicionário?\n\nEsta ação não pode ser desfeita.')) {
+  if (confirm(i18n.t('clearAllConfirm'))) {
     chrome.storage.sync.set({dictionary: {}}, function() {
       loadDictionary();
       // Notifica as páginas ativas para remover os destaques
@@ -80,7 +80,7 @@ function openAIConfig() {
         if (typeof showAIConfigModal === 'function') {
           showAIConfigModal();
         } else {
-          alert('Abra uma página da web para configurar a IA.');
+          alert(i18n.t('openWebPageToConfig'));
         }
       }
     });
@@ -101,7 +101,7 @@ window.editWord = function(word, desc) {
         } else if (typeof showModal === 'function') {
           showModal(word);
         } else {
-          alert('Abra uma página da web para editar suas palavras.');
+          alert(i18n.t('openWebPageToEdit'));
         }
       },
       args: [word]
@@ -112,8 +112,51 @@ window.editWord = function(word, desc) {
   window.close();
 };
 
+// Função para atualizar todos os textos do popup
+function updatePopupTexts() {
+  // Atualiza título
+  const titleElement = document.querySelector('.header h3');
+  if (titleElement) titleElement.textContent = i18n.t('popupTitle');
+  
+  // Atualiza tooltip do ícone de configuração de IA
+  const aiConfigIcon = document.getElementById('aiConfigIcon');
+  if (aiConfigIcon) aiConfigIcon.title = i18n.t('aiConfigTooltip');
+  
+  // Atualiza seção "Como usar"
+  const howToTitle = document.querySelector('.info h4');
+  if (howToTitle) howToTitle.textContent = i18n.t('howToUseTitle');
+  
+  const howToSteps = document.querySelectorAll('.info p');
+  if (howToSteps.length >= 5) {
+    howToSteps[0].textContent = i18n.t('howToStep1');
+    howToSteps[1].textContent = i18n.t('howToStep2');
+    howToSteps[2].textContent = i18n.t('howToStep3');
+    howToSteps[3].textContent = i18n.t('howToStep4');
+    howToSteps[4].textContent = i18n.t('howToStep5');
+  }
+  
+  // Atualiza contador de palavras
+  const wordsCounter = document.querySelector('.stats span:not(.stats-number)');
+  if (wordsCounter) wordsCounter.textContent = i18n.t('wordsCounter');
+  
+  // Atualiza botão de limpar
+  const clearBtn = document.getElementById('clearAllBtn');
+  if (clearBtn) clearBtn.textContent = i18n.t('clearAllButton');
+  
+  // Recarrega o dicionário para aplicar traduções nas mensagens
+  loadDictionary();
+}
+
+// Função removida - seletor de idioma movido para modal de configurações
+
 // Carrega o dicionário quando o popup abre
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+  // Inicializa o sistema de i18n
+  await i18n.initialize();
+  
+  // Atualiza todos os textos do popup
+  updatePopupTexts();
+  
   loadDictionary();
   
   // Adiciona event listener para o botão de limpar
@@ -133,5 +176,21 @@ document.addEventListener('DOMContentLoaded', function() {
 chrome.storage.onChanged.addListener(function(changes, namespace) {
   if (namespace === 'sync' && changes.dictionary) {
     loadDictionary();
+  }
+  
+  // Recarrega interface quando idioma muda
+  if (namespace === 'sync' && changes.language) {
+    i18n.changeLanguage(changes.language.newValue).then(() => {
+      updatePopupTexts();
+    });
+  }
+});
+
+// Listener para mensagens de outros scripts
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'languageChanged') {
+    i18n.changeLanguage(message.language).then(() => {
+      updatePopupTexts();
+    });
   }
 });

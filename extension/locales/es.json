@@ -1,0 +1,94 @@
+{
+  "extensionName": "Diccionario Personal",
+  "extensionDescription": "Selecciona una palabra/frase, añade una descripción y ve al pasar el ratón.",
+  
+  "popupTitle": "📖 Diccionario Personal",
+  "aiConfigTooltip": "Configuración de IA",
+  
+  "howToUseTitle": "Cómo usar:",
+  "howToStep1": "1. Selecciona una palabra en la página",
+  "howToStep2": "2. Haz clic en el botón 📝 que aparece", 
+  "howToStep3": "3. Añade una descripción",
+  "howToStep4": "4. Las palabras se resaltan en la página",
+  "howToStep5": "5. Haz clic en la palabra dorada para editar",
+  
+  "wordsCounter": "palabras guardadas",
+  "loadingText": "Cargando...",
+  "emptyStateMessage": "Ninguna palabra guardada aún.<br><br>¡Selecciona una palabra en cualquier página y haz clic en el botón 📝 para empezar!",
+  
+  "clearAllButton": "🗑️ Limpiar Todas",
+  "clearAllConfirm": "⚠️ ¿Estás seguro de que quieres eliminar TODAS las palabras del diccionario?\n\nEsta acción no se puede deshacer.",
+  
+  "addToDictionary": "Añadir al diccionario",
+  "editWord": "Editar palabra",
+  "saveButton": "Guardar",
+  "cancelButton": "Cancelar",
+  "deleteButton": "Eliminar",
+  
+  "wordPlaceholder": "Palabra o frase",
+  "descriptionPlaceholder": "Añade tu descripción aquí...",
+  
+  "openWebPageToEdit": "Abre una página web para editar tus palabras.",
+  "openWebPageToConfig": "Abre una página web para configurar la IA.",
+  
+  "deleteConfirm": "¿Estás seguro de que quieres eliminar esta palabra de tu diccionario?",
+  
+  "aiConfigTitle": "Configuración de IA",
+  "aiProvider": "Proveedor de IA:",
+  "apiKey": "Clave API:",
+  "aiModel": "Modelo:",
+  "temperature": "Creatividad (Temperature):",
+  "maxTokens": "Longitud Máxima de Respuesta:",
+  "systemPrompt": "Instrucciones del Sistema:",
+  "testAI": "Probar IA",
+  "saveConfig": "Guardar Configuración",
+  
+  "selectProvider": "Selecciona un proveedor",
+  "providerOpenAI": "OpenAI (GPT)",
+  "providerAnthropic": "Anthropic (Claude)", 
+  "providerGoogle": "Google (Gemini)",
+  
+  "defaultSystemPrompt": "Eres un asistente útil. Proporciona explicaciones claras y concisas sobre palabras, conceptos y temas. Siempre responde en el mismo idioma que la pregunta del usuario.",
+  
+  "testPrompt": "Explica qué es la inteligencia artificial",
+  "testSuccess": "✅ ¡La IA funciona correctamente!",
+  "testError": "❌ Error al probar la IA: {error}",
+  "configSaved": "✅ ¡Configuración guardada correctamente!",
+  "configError": "❌ Error al guardar configuración: {error}",
+  
+  "apiKeyRequired": "La clave API es obligatoria",
+  "modelRequired": "El modelo es obligatorio",
+  
+  "aiExplanationTitle": "Explicación de la IA",
+  "closeButton": "Cerrar",
+  "askAI": "Preguntar a la IA",
+  "aiExplanationError": "Error al obtener explicación de la IA: {error}",
+  
+  "selectLanguage": "Seleccionar Idioma:",
+  "languageChanged": "Idioma cambiado a {language}",
+  
+  "fillAllFields": "¡Por favor completa todos los campos!",
+  "updatedSuccessfully": "¡Actualizado correctamente!",
+  "savedSuccessfully": "¡Guardado correctamente!",
+  "deletedSuccessfully": "¡Eliminado correctamente!",
+  "pleaseSelectProvider": "¡Por favor, selecciona un proveedor!",
+  "pleaseEnterApiKey": "¡Por favor, introduce la clave API!",
+  "pleaseSelectModel": "¡Por favor, selecciona un modelo!",
+  "configurationSaved": "¡Configuración guardada!",
+  "selectProviderFirst": "Selecciona un proveedor primero",
+  "selectModel": "Selecciona un modelo...",
+  "howToGetKeys": "Cómo obtener las claves:",
+  "generatingDescription": "Generando descripción...",
+  "generatedSuccessfully": "¡Descripción generada correctamente!",
+  "errorGeneratingDescription": "Error al generar descripción: {error}",
+  "configureAIFirst": "Configura la IA primero haciendo clic en \"⚙️ Config IA\"",
+  "unsupportedProvider": "Proveedor no soportado",
+  "generateWithAI": "Generar con IA",
+  "clickToEdit": "Haz clic para editar",
+  "descriptionLabel": "Descripción:",
+  "interfaceLanguage": "Idioma de la Interfaz:",
+  "aiPromptPrefix": "Por favor, responde en español. Define brevemente la palabra o frase:",
+  "aiContextPage": "Contexto de la página:",
+  "aiContextExcerpts": "Fragmentos de texto donde aparece la palabra:",
+  "aiSystemPrompt": "Eres un asistente que crea definiciones claras y concisas para palabras y frases basándose en el contexto proporcionado. Responde únicamente con la definición en español, sin explicaciones adicionales o mención del contexto."
+}

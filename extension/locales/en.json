@@ -1,0 +1,94 @@
+{
+  "extensionName": "Personal Dictionary",
+  "extensionDescription": "Select a word/phrase, add a description and see it on hover.",
+  
+  "popupTitle": "📖 Personal Dictionary",
+  "aiConfigTooltip": "AI Configuration",
+  
+  "howToUseTitle": "How to use:",
+  "howToStep1": "1. Select a word on the page",
+  "howToStep2": "2. Click the 📝 button that appears", 
+  "howToStep3": "3. Add a description",
+  "howToStep4": "4. Words get highlighted on the page",
+  "howToStep5": "5. Click the golden word to edit",
+  
+  "wordsCounter": "saved words",
+  "loadingText": "Loading...",
+  "emptyStateMessage": "No words saved yet.<br><br>Select a word on any page and click the 📝 button to get started!",
+  
+  "clearAllButton": "🗑️ Clear All",
+  "clearAllConfirm": "⚠️ Are you sure you want to delete ALL words from the dictionary?\n\nThis action cannot be undone.",
+  
+  "addToDictionary": "Add to dictionary",
+  "editWord": "Edit word",
+  "saveButton": "Save",
+  "cancelButton": "Cancel",
+  "deleteButton": "Delete",
+  
+  "wordPlaceholder": "Word or phrase",
+  "descriptionPlaceholder": "Add your description here...",
+  
+  "openWebPageToEdit": "Open a web page to edit your words.",
+  "openWebPageToConfig": "Open a web page to configure AI.",
+  
+  "deleteConfirm": "Are you sure you want to delete this word from your dictionary?",
+  
+  "aiConfigTitle": "AI Configuration",
+  "aiProvider": "AI Provider:",
+  "apiKey": "API Key:",
+  "aiModel": "Model:",
+  "temperature": "Creativity (Temperature):",
+  "maxTokens": "Maximum Response Length:",
+  "systemPrompt": "System Instructions:",
+  "testAI": "Test AI",
+  "saveConfig": "Save Configuration",
+  
+  "selectProvider": "Select a provider",
+  "providerOpenAI": "OpenAI (GPT)",
+  "providerAnthropic": "Anthropic (Claude)", 
+  "providerGoogle": "Google (Gemini)",
+  
+  "defaultSystemPrompt": "You are a helpful assistant. Provide clear and concise explanations about words, concepts, and topics. Always respond in the same language as the user's question.",
+  
+  "testPrompt": "Explain what is artificial intelligence",
+  "testSuccess": "✅ AI is working correctly!",
+  "testError": "❌ Error testing AI: {error}",
+  "configSaved": "✅ Configuration saved successfully!",
+  "configError": "❌ Error saving configuration: {error}",
+  
+  "apiKeyRequired": "API Key is required",
+  "modelRequired": "Model is required",
+  
+  "aiExplanationTitle": "AI Explanation",
+  "closeButton": "Close",
+  "askAI": "Ask AI",
+  "aiExplanationError": "Error getting AI explanation: {error}",
+  
+  "selectLanguage": "Select Language:",
+  "languageChanged": "Language changed to {language}",
+  
+  "fillAllFields": "Please fill in all fields!",
+  "updatedSuccessfully": "Updated successfully!",
+  "savedSuccessfully": "Saved successfully!",
+  "deletedSuccessfully": "Deleted successfully!",
+  "pleaseSelectProvider": "Please select a provider!",
+  "pleaseEnterApiKey": "Please enter the API key!",
+  "pleaseSelectModel": "Please select a model!",
+  "configurationSaved": "Configuration saved!",
+  "selectProviderFirst": "Select a provider first",
+  "selectModel": "Select a model...",
+  "howToGetKeys": "How to get the keys:",
+  "generatingDescription": "Generating description...",
+  "generatedSuccessfully": "Description generated successfully!",
+  "errorGeneratingDescription": "Error generating description: {error}",
+  "configureAIFirst": "Configure AI first by clicking \"⚙️ Config AI\"",
+  "unsupportedProvider": "Unsupported provider",
+  "generateWithAI": "Generate with AI",
+  "clickToEdit": "Click to edit",
+  "descriptionLabel": "Description:",
+  "interfaceLanguage": "Interface Language:",
+  "aiPromptPrefix": "Please respond in English. Define briefly the word or phrase:",
+  "aiContextPage": "Page context:",
+  "aiContextExcerpts": "Text excerpts where the word appears:",
+  "aiSystemPrompt": "You are an assistant that creates clear and concise definitions for words and phrases based on the provided context. Respond only with the definition in English, without additional explanations or mention of the context."
+}

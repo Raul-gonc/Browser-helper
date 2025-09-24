@@ -3,6 +3,74 @@ let dictionary = {};
 let selectionButton = null;
 let modal = null;
 let tooltip = null;
+let contentI18n = null;
+
+// Inicializar i18n para content script
+async function initContentI18n() {
+  if (!contentI18n) {
+    // Cria uma instância local do i18n para content script
+    contentI18n = {
+      translations: {},
+      currentLanguage: 'en', // Padrão em inglês
+      
+      async loadTranslations() {
+        try {
+          // Obtém idioma salvo ou detecta automaticamente
+          const stored = await new Promise(resolve => {
+            chrome.storage.sync.get({ language: null }, resolve);
+          });
+          
+          if (stored.language) {
+            this.currentLanguage = stored.language;
+          } else {
+            // Detecta idioma do navegador
+            const browserLang = navigator.language || navigator.userLanguage;
+            console.log('Browser language detected:', browserLang);
+            if (browserLang.startsWith('pt')) {
+              this.currentLanguage = 'pt-BR';
+            } else if (browserLang.startsWith('es')) {
+              this.currentLanguage = 'es';
+            } else {
+              this.currentLanguage = 'en';
+            }
+            // Salva detecção
+            chrome.storage.sync.set({ language: this.currentLanguage });
+            console.log('Language set to:', this.currentLanguage);
+          }
+          
+          // Carrega traduções
+          const response = await fetch(chrome.runtime.getURL(`locales/${this.currentLanguage}.json`));
+          this.translations = await response.json();
+        } catch (error) {
+          console.warn('Erro ao carregar traduções no content script:', error);
+          // Carrega fallback em inglês
+          try {
+            const fallbackResponse = await fetch(chrome.runtime.getURL(`locales/en.json`));
+            this.translations = await fallbackResponse.json();
+          } catch (fallbackError) {
+            console.error('Erro ao carregar traduções de fallback:', fallbackError);
+          }
+        }
+      },
+      
+      t(key, variables = {}) {
+        let translation = this.translations[key] || key;
+        
+        // Substitui variáveis
+        Object.keys(variables).forEach(variable => {
+          const placeholder = `{${variable}}`;
+          translation = translation.replace(new RegExp(placeholder, 'g'), variables[variable]);
+        });
+        
+        return translation;
+      }
+    };
+    
+    await contentI18n.loadTranslations();
+  }
+  
+  return contentI18n;
+}
 
 // Função para escapar regex
 function escapeRegExp(string) {
@@ -75,7 +143,7 @@ function showSelectionButton(event, selectedText) {
   selectionButton = document.createElement('div');
   selectionButton.className = 'dicionario-selection-btn';
   selectionButton.innerHTML = '📝';
-  selectionButton.title = 'Adicionar ao dicionário';
+  selectionButton.title = contentI18n ? contentI18n.t('addToDictionary') : 'Adicionar ao dicionário';
   
   // Posiciona o botão próximo ao cursor
   selectionButton.style.left = (event.pageX + 10) + 'px';
@@ -105,8 +173,8 @@ function showModal(selectedText) {
   // Verifica se a palavra já existe no dicionário
   const existingDesc = dictionary[selectedText] || '';
   const isEditing = existingDesc !== '';
-  const modalTitle = isEditing ? 'Editar Descrição' : 'Adicionar ao Dicionário';
-  const buttonText = isEditing ? 'Atualizar' : 'Salvar';
+  const modalTitle = isEditing ? contentI18n.t('editWord') : contentI18n.t('addToDictionary');
+  const buttonText = contentI18n.t('saveButton');
   
   modal = document.createElement('div');
   modal.className = 'dicionario-modal';
@@ -115,18 +183,18 @@ function showModal(selectedText) {
       <div class="dicionario-modal-header">
         <h3>${modalTitle}</h3>
         <div class="dicionario-header-buttons">
-          <button id="dicionario-config" class="dicionario-config-header-btn" title="Configurar IA">⚙️</button>
+          <button id="dicionario-config" class="dicionario-config-header-btn" title="${contentI18n.t('aiConfigTooltip')}">⚙️</button>
           <span class="dicionario-modal-close">&times;</span>
         </div>
       </div>
       <div class="dicionario-modal-body">
-        <label>Palavra/Frase:</label>
+        <label>${contentI18n.t('wordPlaceholder')}:</label>
         <input type="text" id="dicionario-word" value="${selectedText}" readonly>
-        <label>Descrição: <span id="dicionario-ai-btn" class="dicionario-ai-link" title="Gerar descrição com IA">Gere com IA</span></label>
-        <textarea id="dicionario-desc" placeholder="Digite a descrição..." rows="3">${existingDesc}</textarea>
+        <label>${contentI18n.t('descriptionLabel')} <span id="dicionario-ai-btn" class="dicionario-ai-link" title="${contentI18n.t('askAI')}">${contentI18n.t('askAI')}</span></label>
+        <textarea id="dicionario-desc" placeholder="${contentI18n.t('descriptionPlaceholder')}" rows="3">${existingDesc}</textarea>
         <div class="dicionario-modal-buttons">
           <button id="dicionario-save">${buttonText}</button>
-          ${isEditing ? '<button id="dicionario-delete" class="dicionario-delete-btn">Excluir</button>' : ''}
+          ${isEditing ? `<button id="dicionario-delete" class="dicionario-delete-btn">${contentI18n.t('deleteButton')}</button>` : ''}
         </div>
         <div id="dicionario-message"></div>
       </div>
@@ -146,14 +214,14 @@ function showModal(selectedText) {
     const desc = modal.querySelector('#dicionario-desc').value.trim();
     
     if (!word || !desc) {
-      modal.querySelector('#dicionario-message').textContent = 'Preencha todos os campos!';
+      modal.querySelector('#dicionario-message').textContent = contentI18n.t('fillAllFields');
       modal.querySelector('#dicionario-message').style.color = '#dc3545';
       return;
     }
     
     dictionary[word] = desc;
     chrome.storage.sync.set({dictionary: dictionary}, function() {
-      const successMessage = isEditing ? 'Atualizado com sucesso!' : 'Salvo com sucesso!';
+      const successMessage = isEditing ? contentI18n.t('updatedSuccessfully') : contentI18n.t('savedSuccessfully');
       modal.querySelector('#dicionario-message').textContent = successMessage;
       modal.querySelector('#dicionario-message').style.color = '#28a745';
       setTimeout(() => {
@@ -167,10 +235,10 @@ function showModal(selectedText) {
   const deleteBtn = modal.querySelector('#dicionario-delete');
   if (deleteBtn) {
     deleteBtn.onclick = function() {
-      if (confirm(`Tem certeza que deseja excluir "${selectedText}" do dicionário?`)) {
+      if (confirm(contentI18n.t('deleteConfirm'))) {
         delete dictionary[selectedText];
         chrome.storage.sync.set({dictionary: dictionary}, function() {
-          modal.querySelector('#dicionario-message').textContent = 'Excluído com sucesso!';
+          modal.querySelector('#dicionario-message').textContent = contentI18n.t('deletedSuccessfully');
           modal.querySelector('#dicionario-message').style.color = '#28a745';
           setTimeout(() => {
             hideModal();
@@ -262,7 +330,7 @@ function showTooltip(event, word, desc) {
   tooltip.className = 'dicionario-tooltip';
   tooltip.innerHTML = `
     <div class="dicionario-tooltip-content">
-      <strong class="dicionario-tooltip-word" title="Clique para editar">${word}</strong>
+      <strong class="dicionario-tooltip-word" title="${contentI18n.t('clickToEdit')}">${word}</strong>
       <p class="dicionario-tooltip-desc">${desc}</p>
     </div>
   `;
@@ -313,35 +381,44 @@ function showAIConfigModal() {
   configModal.innerHTML = `
     <div class="dicionario-modal-content">
       <div class="dicionario-modal-header">
-        <h3>⚙️ Configuração da IA</h3>
+        <h3>${contentI18n.t('aiConfigTitle')}</h3>
         <div class="dicionario-header-buttons">
           <span class="dicionario-modal-close">&times;</span>
         </div>
       </div>
       <div class="dicionario-modal-body">
-        <label>Provedor de IA:</label>
+        <label>${contentI18n.t('aiProvider')}</label>
         <select id="ai-provider">
-          <option value="">Selecione um provedor...</option>
-          <option value="openai">ChatGPT (OpenAI)</option>
-          <option value="anthropic">Claude (Anthropic)</option>
-          <option value="google">Gemini (Google)</option>
+          <option value="">${contentI18n.t('selectProvider')}</option>
+          <option value="openai">${contentI18n.t('providerOpenAI')}</option>
+          <option value="anthropic">${contentI18n.t('providerAnthropic')}</option>
+          <option value="google">${contentI18n.t('providerGoogle')}</option>
         </select>
         
-        <label>API Key:</label>
-        <input type="password" id="ai-api-key" placeholder="Sua chave da API">
+        <label>${contentI18n.t('apiKey')}</label>
+        <input type="password" id="ai-api-key" placeholder="${contentI18n.t('apiKey')}">
         
-        <label>Modelo:</label>
+        <label>${contentI18n.t('aiModel')}</label>
         <select id="ai-model" disabled>
-          <option value="">Selecione um provedor primeiro</option>
+          <option value="">${contentI18n.t('selectProviderFirst')}</option>
+        </select>
+        
+        <hr style="border: none; border-top: 1px solid rgba(74, 85, 104, 0.3); margin: 20px 0;">
+        
+        <label>${contentI18n.t('interfaceLanguage')}</label>
+        <select id="interface-language">
+          <option value="pt-BR" ${contentI18n.currentLanguage === 'pt-BR' ? 'selected' : ''}>🇧🇷 Português</option>
+          <option value="en" ${contentI18n.currentLanguage === 'en' ? 'selected' : ''}>🇺🇸 English</option>
+          <option value="es" ${contentI18n.currentLanguage === 'es' ? 'selected' : ''}>🇪🇸 Español</option>
         </select>
         
         <div class="dicionario-modal-buttons">
-          <button id="save-ai-config">Salvar Configuração</button>
-          <button id="cancel-ai-config">Cancelar</button>
+          <button id="save-ai-config">${contentI18n.t('saveConfig')}</button>
+          <button id="cancel-ai-config">${contentI18n.t('cancelButton')}</button>
         </div>
         
         <div class="ai-info">
-          <p><strong>Como obter as chaves:</strong></p>
+          <p><strong>${contentI18n.t('howToGetKeys')}</strong></p>
           <p>• <strong>OpenAI:</strong> platform.openai.com/api-keys</p>
           <p>• <strong>Anthropic:</strong> console.anthropic.com/</p>
           <p>• <strong>Google:</strong> aistudio.google.com/app/apikey</p>
@@ -392,8 +469,36 @@ function showAIConfigModal() {
       updateModelOptions(selectedProvider, configModal);
     } else {
       modelSelect.disabled = true;
-      modelSelect.innerHTML = '<option value="">Selecione um provedor primeiro</option>';
+      modelSelect.innerHTML = `<option value="">${contentI18n.t('selectProviderFirst')}</option>`;
     }
+  };
+  
+  // Event listener para mudança de idioma
+  configModal.querySelector('#interface-language').onchange = async function() {
+    const newLanguage = this.value;
+    
+    // Salva o novo idioma
+    await new Promise(resolve => {
+      chrome.storage.sync.set({ language: newLanguage }, resolve);
+    });
+    
+    // Atualiza o idioma atual do content script
+    contentI18n.currentLanguage = newLanguage;
+    await contentI18n.loadTranslations();
+    
+    // Fecha o modal atual e reabre com o novo idioma
+    configModal.remove();
+    setTimeout(() => {
+      showAIConfigModal();
+    }, 100);
+    
+    // Notifica outros scripts sobre a mudança
+    chrome.runtime.sendMessage({
+      type: 'languageChanged',
+      language: newLanguage
+    }).catch(() => {
+      // Ignora erro se não houver receptor
+    });
   };
   
   // Event listener para salvar configuração
@@ -405,19 +510,19 @@ function showAIConfigModal() {
     
     // Validações
     if (!provider) {
-      messageDiv.textContent = 'Por favor, selecione um provedor!';
+      messageDiv.textContent = contentI18n.t('pleaseSelectProvider');
       messageDiv.style.color = '#fc8181';
       return;
     }
     
     if (!apiKey) {
-      messageDiv.textContent = 'Por favor, insira a API Key!';
+      messageDiv.textContent = contentI18n.t('pleaseEnterApiKey');
       messageDiv.style.color = '#fc8181';
       return;
     }
     
     if (!model) {
-      messageDiv.textContent = 'Por favor, selecione um modelo!';
+      messageDiv.textContent = contentI18n.t('pleaseSelectModel');
       messageDiv.style.color = '#fc8181';
       return;
     }
@@ -425,7 +530,7 @@ function showAIConfigModal() {
     const config = { provider, apiKey, model };
     
     chrome.storage.sync.set({aiConfig: config}, function() {
-      messageDiv.textContent = 'Configuração salva!';
+      messageDiv.textContent = contentI18n.t('configurationSaved');
       messageDiv.style.color = '#68d391';
       setTimeout(() => {
         configModal.remove();
@@ -441,7 +546,7 @@ function updateModelOptions(provider, configModal) {
   if (!provider) {
     const option = document.createElement('option');
     option.value = '';
-    option.textContent = 'Selecione um provedor primeiro';
+    option.textContent = contentI18n.t('selectProviderFirst');
     modelSelect.appendChild(option);
     return;
   }
@@ -449,7 +554,7 @@ function updateModelOptions(provider, configModal) {
   // Adiciona opção padrão
   const defaultOption = document.createElement('option');
   defaultOption.value = '';
-  defaultOption.textContent = 'Selecione um modelo...';
+  defaultOption.textContent = contentI18n.t('selectModel');
   modelSelect.appendChild(defaultOption);
   
   const models = {
@@ -533,6 +638,15 @@ function getPageContext(word) {
   return context;
 }
 
+// Função para obter o prompt do sistema localizado
+function getLocalizedSystemPrompt() {
+  if (!contentI18n || !contentI18n.translations) {
+    // Fallback em inglês se as traduções não estiverem carregadas
+    return "You are an assistant that creates clear and concise definitions for words and phrases based on the provided context. Respond only with the definition in English, without additional explanations or mention of the context.";
+  }
+  return contentI18n.t('aiSystemPrompt');
+}
+
 async function generateAIDescription(word) {
   const aiBtn = modal.querySelector('#dicionario-ai-btn');
   const descField = modal.querySelector('#dicionario-desc');
@@ -541,12 +655,15 @@ async function generateAIDescription(word) {
   // Coleta contexto da página
   const pageContext = getPageContext(word);
   
+  // Log do idioma atual para depuração
+  console.log('Generating AI description in language:', contentI18n.currentLanguage);
+  
   // Verifica se há configuração de IA
   chrome.storage.sync.get({aiConfig: {}}, async function(data) {
     const config = data.aiConfig;
     
     if (!config.apiKey || !config.provider) {
-      messageDiv.textContent = 'Configure a IA primeiro clicando em "⚙️ Config IA"';
+      messageDiv.textContent = contentI18n.t('configureAIFirst');
       messageDiv.style.color = '#dc3545';
       return;
     }
@@ -554,7 +671,7 @@ async function generateAIDescription(word) {
     // Mostra estado de carregamento
     aiBtn.textContent = '⏳ Gerando...';
     aiBtn.disabled = true;
-    messageDiv.textContent = 'Gerando descrição...';
+    messageDiv.textContent = contentI18n.t('generatingDescription');
     messageDiv.style.color = '#007cba';
     
     try {
@@ -571,40 +688,38 @@ async function generateAIDescription(word) {
           description = await callGemini(word, config, pageContext);
           break;
         default:
-          throw new Error('Provedor não suportado');
+          throw new Error(contentI18n.t('unsupportedProvider'));
       }
       
       descField.value = description.trim();
-      messageDiv.textContent = 'Descrição gerada com sucesso!';
+      messageDiv.textContent = contentI18n.t('generatedSuccessfully');
       messageDiv.style.color = '#28a745';
       
     } catch (error) {
       console.error('Erro ao gerar descrição:', error);
-      messageDiv.textContent = 'Erro ao gerar descrição: ' + error.message;
+      messageDiv.textContent = contentI18n.t('errorGeneratingDescription', { error: error.message });
       messageDiv.style.color = '#dc3545';
     } finally {
-      aiBtn.textContent = 'Gere com IA';
+      aiBtn.textContent = contentI18n.t('generateWithAI');
       aiBtn.disabled = false;
     }
   });
 }
 
 async function callOpenAI(word, config, pageContext) {
-  // Constrói o prompt com contexto
-  let contextPrompt = `Defina brevemente a palavra ou frase: "${word}"`;
+  // Constrói o prompt com contexto usando traduções localizadas
+  let contextPrompt = `${contentI18n.t('aiPromptPrefix')} "${word}"`;
   
   if (pageContext.pageTitle) {
-    contextPrompt += `\n\nContexto da página: "${pageContext.pageTitle}"`;
+    contextPrompt += `\n\n${contentI18n.t('aiContextPage')} "${pageContext.pageTitle}"`;
   }
   
   if (pageContext.wordOccurrences && pageContext.wordOccurrences.length > 0) {
-    contextPrompt += `\n\nTrechos onde a palavra aparece:`;
+    contextPrompt += `\n\n${contentI18n.t('aiContextExcerpts')}`;
     pageContext.wordOccurrences.forEach((excerpt, index) => {
       contextPrompt += `\n${index + 1}. "${excerpt}"`;
     });
   }
-  
-  contextPrompt += `\n\nCom base no contexto acima, forneça uma definição clara e específica da palavra/frase.`;
   
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -617,7 +732,7 @@ async function callOpenAI(word, config, pageContext) {
       messages: [
         {
           role: 'system',
-          content: 'Você é um assistente que cria definições claras e concisas para palavras e frases baseando-se no contexto fornecido. Responda apenas com a definição, sem explicações adicionais ou menção do contexto.'
+          content: getLocalizedSystemPrompt()
         },
         {
           role: 'user',
@@ -638,21 +753,21 @@ async function callOpenAI(word, config, pageContext) {
 }
 
 async function callClaude(word, config, pageContext) {
-  // Constrói o prompt com contexto
-  let contextPrompt = `Defina brevemente a palavra ou frase: "${word}"`;
+  // Constrói o prompt com contexto usando traduções localizadas
+  let contextPrompt = `${contentI18n.t('aiPromptPrefix')} "${word}"`;
   
   if (pageContext.pageTitle) {
-    contextPrompt += `\n\nContexto da página: "${pageContext.pageTitle}"`;
+    contextPrompt += `\n\n${contentI18n.t('aiContextPage')} "${pageContext.pageTitle}"`;
   }
   
   if (pageContext.wordOccurrences && pageContext.wordOccurrences.length > 0) {
-    contextPrompt += `\n\nTrechos onde a palavra aparece:`;
+    contextPrompt += `\n\n${contentI18n.t('aiContextExcerpts')}`;
     pageContext.wordOccurrences.forEach((excerpt, index) => {
       contextPrompt += `\n${index + 1}. "${excerpt}"`;
     });
   }
   
-  contextPrompt += `\n\nCom base no contexto acima, forneça uma definição clara e específica da palavra/frase. Responda apenas com a definição, sem explicações adicionais ou menção do contexto.`;
+  contextPrompt += `\n\n${getLocalizedSystemPrompt()}`;
   
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -682,21 +797,21 @@ async function callClaude(word, config, pageContext) {
 }
 
 async function callGemini(word, config, pageContext) {
-  // Constrói o prompt com contexto
-  let contextPrompt = `Defina brevemente a palavra ou frase: "${word}"`;
+  // Constrói o prompt com contexto usando traduções localizadas
+  let contextPrompt = `${contentI18n.t('aiPromptPrefix')} "${word}"`;
   
   if (pageContext.pageTitle) {
-    contextPrompt += `\n\nContexto da página: "${pageContext.pageTitle}"`;
+    contextPrompt += `\n\n${contentI18n.t('aiContextPage')} "${pageContext.pageTitle}"`;
   }
   
   if (pageContext.wordOccurrences && pageContext.wordOccurrences.length > 0) {
-    contextPrompt += `\n\nTrechos onde a palavra aparece:`;
+    contextPrompt += `\n\n${contentI18n.t('aiContextExcerpts')}`;
     pageContext.wordOccurrences.forEach((excerpt, index) => {
       contextPrompt += `\n${index + 1}. "${excerpt}"`;
     });
   }
   
-  contextPrompt += `\n\nCom base no contexto acima, forneça uma definição clara e específica da palavra/frase. Responda apenas com a definição, sem explicações adicionais ou menção do contexto.`;
+  contextPrompt += `\n\n${getLocalizedSystemPrompt()}`;
   
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`, {
     method: 'POST',
@@ -747,13 +862,18 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-// Inicializa a extensão
-loadDictionaryAndHighlight();
+// A inicialização agora é feita de forma assíncrona no final do arquivo
 
 // Recarrega quando há mudanças no storage
 chrome.storage.onChanged.addListener(function(changes, namespace) {
   if (namespace === 'sync' && changes.dictionary) {
     loadDictionaryAndHighlight();
+  }
+  
+  // Recarrega traduções quando idioma muda
+  if (namespace === 'sync' && changes.language && contentI18n) {
+    contentI18n.currentLanguage = changes.language.newValue;
+    contentI18n.loadTranslations();
   }
 });
 
@@ -1110,5 +1230,17 @@ style.textContent = `
     border: 1px solid rgba(74, 85, 104, 0.3);
     background: rgba(0, 0, 0, 0.2);
   }
+  
+  .dicionario-modal-body hr {
+    border: none;
+    border-top: 1px solid rgba(74, 85, 104, 0.3);
+    margin: 20px 0;
+  }
 `;
 document.head.appendChild(style);
+
+// Inicializar i18n e carregar dicionário
+(async function initializeContentScript() {
+  await initContentI18n();
+  loadDictionaryAndHighlight();
+})();

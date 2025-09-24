@@ -211,6 +211,34 @@
     .word-item-clickable:hover::after {
       opacity: 1;
     }
+    
+    .language-selector {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+    }
+    
+    .language-selector select {
+      background: rgba(26, 32, 44, 0.9);
+      border: 1px solid rgba(74, 85, 104, 0.3);
+      color: #e2e8f0;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .language-selector select:hover {
+      border-color: rgba(99, 179, 237, 0.5);
+      background: rgba(99, 179, 237, 0.1);
+    }
+    
+    .language-selector select:focus {
+      outline: none;
+      border-color: #63b3ed;
+      box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.2);
+    }
   </style>
 </head>
 <body>
@@ -241,6 +269,7 @@
     <button id="clearAllBtn" class="clear-btn">🗑️ Limpar Todas</button>
   </div>
   
+  <script src="i18n.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
