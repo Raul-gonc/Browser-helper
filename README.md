@@ -2,7 +2,7 @@
 
 Browser Helper is a Chromium-based browser extension that lets you create a personal dictionary of words and phrases, highlighting them on any web page and providing custom descriptions, including with the help of generative AI.
 
-## ✨ Features
+## Features
 
 - **Personal Dictionary:** Save words/phrases and add custom descriptions.
 - **Automatic Highlighting:** Saved words are highlighted on all pages.
@@ -12,7 +12,7 @@ Browser Helper is a Chromium-based browser extension that lets you create a pers
 - **Language Selector:** Choose the interface and AI response language in the settings modal.
 - **Sync:** Your words are saved in the cloud via Chrome Storage Sync.
 
-## 🚀 Installation
+## Installation
 
 1. Download or clone this repository:
    ```sh
@@ -23,7 +23,7 @@ Browser Helper is a Chromium-based browser extension that lets you create a pers
 4. Click "Load unpacked" and select the `extension` folder.
 5. Done! The extension icon will appear in your browser bar.
 
-## 🛠️ How to Use
+## How to Use
 
 1. **Select** a word or phrase on any page.
 2. Click the 📝 button that appears.
