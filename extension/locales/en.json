@@ -86,7 +86,7 @@
   "generateWithAI": "Generate with AI",
   "clickToEdit": "Click to edit",
   "descriptionLabel": "Description:",
-  "interfaceLanguage": "Interface Language:",
+  "interfaceLanguage": "Interface/AI Language:",
   "aiPromptPrefix": "Please respond in English. Define briefly the word or phrase:",
   "aiContextPage": "Page context:",
   "aiContextExcerpts": "Text excerpts where the word appears:",
