@@ -122,7 +122,7 @@ function showModal(selectedText) {
       <div class="dicionario-modal-body">
         <label>Palavra/Frase:</label>
         <input type="text" id="dicionario-word" value="${selectedText}" readonly>
-        <label>Descrição: <button id="dicionario-ai-btn" class="dicionario-ai-btn-inline" title="Gerar descrição com IA">🤖 IA</button></label>
+        <label>Descrição: <span id="dicionario-ai-btn" class="dicionario-ai-link" title="Gerar descrição com IA">Gere com IA</span></label>
         <textarea id="dicionario-desc" placeholder="Digite a descrição..." rows="3">${existingDesc}</textarea>
         <div class="dicionario-modal-buttons">
           <button id="dicionario-save">${buttonText}</button>
@@ -583,7 +583,7 @@ async function generateAIDescription(word) {
       messageDiv.textContent = 'Erro ao gerar descrição: ' + error.message;
       messageDiv.style.color = '#dc3545';
     } finally {
-      aiBtn.textContent = '🤖 IA';
+      aiBtn.textContent = 'Gere com IA';
       aiBtn.disabled = false;
     }
   });
@@ -776,7 +776,7 @@ style.textContent = `
   .dicionario-selection-btn {
     position: absolute;
     z-index: 10000;
-    background: #007cba;
+    background: rgba(0, 0, 0, 0.7);
     color: white;
     border: none;
     border-radius: 50%;
@@ -793,7 +793,7 @@ style.textContent = `
   
   .dicionario-selection-btn:hover {
     transform: scale(1.1);
-    background: #005a8a;
+    background: rgba(0, 0, 0, 0.9);
   }
   
   .dicionario-modal {
@@ -932,34 +932,30 @@ style.textContent = `
   
   .dicionario-modal-body textarea {
     resize: vertical;
-    min-height: 80px;
+    min-height: 120px;
   }
   
-  .dicionario-ai-btn-inline {
-    background: transparent;
-    color: #a78bfa;
-    border: 1px solid rgba(167, 139, 250, 0.3);
-    padding: 6px 12px;
-    border-radius: 6px;
+  .dicionario-ai-link {
+    color: #9ca3af;
     cursor: pointer;
     font-size: 12px;
     margin-left: 12px;
     vertical-align: middle;
-    transition: all 0.2s ease;
-    font-weight: 500;
+    transition: color 0.2s ease;
+    font-weight: normal;
+    text-decoration: underline;
+    text-decoration-color: transparent;
   }
   
-  .dicionario-ai-btn-inline:hover {
-    background: rgba(167, 139, 250, 0.1);
-    border-color: rgba(167, 139, 250, 0.5);
-    color: #c4b5fd;
-  }
-  
-  .dicionario-ai-btn-inline:disabled {
-    background: transparent;
+  .dicionario-ai-link:hover {
     color: #6b7280;
-    border-color: rgba(107, 114, 128, 0.3);
+    text-decoration-color: #6b7280;
+  }
+  
+  .dicionario-ai-link:disabled {
+    color: #4b5563;
     cursor: not-allowed;
+    text-decoration: none;
   }
   
   .dicionario-modal-buttons {
