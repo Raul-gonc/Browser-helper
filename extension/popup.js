@@ -1,4 +1,3 @@
-// Carrega e exibe o dicionário no popup
 function loadDictionary() {
   chrome.storage.sync.get({dictionary: {}}, function(data) {
     const dictionary = data.dictionary;
@@ -10,7 +9,6 @@ function loadDictionary() {
     const wordKeys = Object.keys(dictionary);
     const totalWords = wordKeys.length;
     
-    // Atualiza estatísticas e ações
     if (totalWords > 0) {
       wordCount.textContent = totalWords;
       statsContainer.style.display = 'block';
@@ -25,7 +23,6 @@ function loadDictionary() {
       return;
     }
     
-    // Ordena palavras alfabeticamente
     const sortedWords = wordKeys.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
     
     let html = '';
@@ -45,12 +42,10 @@ function loadDictionary() {
   });
 }
 
-// Função para limpar todas as palavras
 function clearAllWords() {
   if (confirm(i18n.t('clearAllConfirm'))) {
     chrome.storage.sync.set({dictionary: {}}, function() {
       loadDictionary();
-      // Notifica as páginas ativas para remover os destaques
       chrome.tabs.query({}, function(tabs) {
         tabs.forEach(tab => {
           if (tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
@@ -62,7 +57,6 @@ function clearAllWords() {
                 }
               }
             }).catch(() => {
-              // Ignora erros em páginas que não podem executar scripts
             });
           }
         });
@@ -71,7 +65,6 @@ function clearAllWords() {
   }
 }
 
-// Função para abrir configuração de IA
 function openAIConfig() {
   chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
     chrome.scripting.executeScript({
@@ -86,11 +79,9 @@ function openAIConfig() {
     });
   });
   
-  // Fecha o popup
   window.close();
 }
 
-// Função para editar palavra (abre modal na página atual)
 window.editWord = function(word, desc) {
   chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
     chrome.scripting.executeScript({
@@ -108,21 +99,16 @@ window.editWord = function(word, desc) {
     });
   });
   
-  // Fecha o popup
   window.close();
 };
 
-// Função para atualizar todos os textos do popup
 function updatePopupTexts() {
-  // Atualiza título
   const titleElement = document.querySelector('.header h3');
   if (titleElement) titleElement.textContent = i18n.t('popupTitle');
   
-  // Atualiza tooltip do ícone de configuração de IA
   const aiConfigIcon = document.getElementById('aiConfigIcon');
   if (aiConfigIcon) aiConfigIcon.title = i18n.t('aiConfigTooltip');
   
-  // Atualiza seção "Como usar"
   const howToTitle = document.querySelector('.info h4');
   if (howToTitle) howToTitle.textContent = i18n.t('howToUseTitle');
   
@@ -135,50 +121,38 @@ function updatePopupTexts() {
     howToSteps[4].textContent = i18n.t('howToStep5');
   }
   
-  // Atualiza contador de palavras
   const wordsCounter = document.querySelector('.stats span:not(.stats-number)');
   if (wordsCounter) wordsCounter.textContent = i18n.t('wordsCounter');
   
-  // Atualiza botão de limpar
   const clearBtn = document.getElementById('clearAllBtn');
   if (clearBtn) clearBtn.textContent = i18n.t('clearAllButton');
   
-  // Recarrega o dicionário para aplicar traduções nas mensagens
   loadDictionary();
 }
 
-// Função removida - seletor de idioma movido para modal de configurações
-
-// Carrega o dicionário quando o popup abre
 document.addEventListener('DOMContentLoaded', async function() {
-  // Inicializa o sistema de i18n
   await i18n.initialize();
   
-  // Atualiza todos os textos do popup
   updatePopupTexts();
   
   loadDictionary();
   
-  // Adiciona event listener para o botão de limpar
   const clearBtn = document.getElementById('clearAllBtn');
   if (clearBtn) {
     clearBtn.addEventListener('click', clearAllWords);
   }
   
-  // Adiciona event listener para o ícone de configuração de IA
   const aiConfigIcon = document.getElementById('aiConfigIcon');
   if (aiConfigIcon) {
     aiConfigIcon.addEventListener('click', openAIConfig);
   }
 });
 
-// Recarrega quando há mudanças no storage
 chrome.storage.onChanged.addListener(function(changes, namespace) {
   if (namespace === 'sync' && changes.dictionary) {
     loadDictionary();
   }
   
-  // Recarrega interface quando idioma muda
   if (namespace === 'sync' && changes.language) {
     i18n.changeLanguage(changes.language.newValue).then(() => {
       updatePopupTexts();
@@ -186,7 +160,6 @@ chrome.storage.onChanged.addListener(function(changes, namespace) {
   }
 });
 
-// Listener para mensagens de outros scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'languageChanged') {
     i18n.changeLanguage(message.language).then(() => {

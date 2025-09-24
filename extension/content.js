@@ -1,21 +1,17 @@
-// Variáveis globais
 let dictionary = {};
 let selectionButton = null;
 let modal = null;
 let tooltip = null;
 let contentI18n = null;
 
-// Inicializar i18n para content script
 async function initContentI18n() {
   if (!contentI18n) {
-    // Cria uma instância local do i18n para content script
     contentI18n = {
       translations: {},
-      currentLanguage: 'en', // Padrão em inglês
+      currentLanguage: 'en',
       
       async loadTranslations() {
         try {
-          // Obtém idioma salvo ou detecta automaticamente
           const stored = await new Promise(resolve => {
             chrome.storage.sync.get({ language: null }, resolve);
           });
@@ -23,7 +19,6 @@ async function initContentI18n() {
           if (stored.language) {
             this.currentLanguage = stored.language;
           } else {
-            // Detecta idioma do navegador
             const browserLang = navigator.language || navigator.userLanguage;
             console.log('Browser language detected:', browserLang);
             if (browserLang.startsWith('pt')) {
@@ -33,17 +28,14 @@ async function initContentI18n() {
             } else {
               this.currentLanguage = 'en';
             }
-            // Salva detecção
             chrome.storage.sync.set({ language: this.currentLanguage });
             console.log('Language set to:', this.currentLanguage);
           }
           
-          // Carrega traduções
           const response = await fetch(chrome.runtime.getURL(`locales/${this.currentLanguage}.json`));
           this.translations = await response.json();
         } catch (error) {
           console.warn('Erro ao carregar traduções no content script:', error);
-          // Carrega fallback em inglês
           try {
             const fallbackResponse = await fetch(chrome.runtime.getURL(`locales/en.json`));
             this.translations = await fallbackResponse.json();
@@ -56,7 +48,6 @@ async function initContentI18n() {
       t(key, variables = {}) {
         let translation = this.translations[key] || key;
         
-        // Substitui variáveis
         Object.keys(variables).forEach(variable => {
           const placeholder = `{${variable}}`;
           translation = translation.replace(new RegExp(placeholder, 'g'), variables[variable]);
@@ -72,12 +63,10 @@ async function initContentI18n() {
   return contentI18n;
 }
 
-// Função para escapar regex
 function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Carrega o dicionário e destaca palavras
 function loadDictionaryAndHighlight() {
   chrome.storage.sync.get({dictionary: {}}, function(data) {
     dictionary = data.dictionary;
@@ -85,9 +74,7 @@ function loadDictionaryAndHighlight() {
   });
 }
 
-// Destaca palavras do dicionário na página
 function highlightWords() {
-  // Remove destaques anteriores
   const oldHighlights = document.querySelectorAll('.dicionario-highlight');
   oldHighlights.forEach(highlight => {
     const parent = highlight.parentNode;
@@ -106,7 +93,7 @@ function highlightWords() {
 }
 
 function walkAndHighlight(node, regex, originalWord, desc) {
-  if (node.nodeType === 3) { // texto
+  if (node.nodeType === 3) {
     const match = node.nodeValue.match(regex);
     if (match) {
       const span = document.createElement('span');
@@ -122,7 +109,6 @@ function walkAndHighlight(node, regex, originalWord, desc) {
   }
 }
 
-// Detecta seleção de texto e mostra botão
 document.addEventListener('mouseup', function(e) {
   setTimeout(() => {
     const selection = window.getSelection();
@@ -136,7 +122,6 @@ document.addEventListener('mouseup', function(e) {
   }, 10);
 });
 
-// Mostra botão próximo à seleção
 function showSelectionButton(event, selectedText) {
   hideSelectionButton();
   
@@ -145,7 +130,6 @@ function showSelectionButton(event, selectedText) {
   selectionButton.innerHTML = '📝';
   selectionButton.title = contentI18n ? contentI18n.t('addToDictionary') : 'Adicionar ao dicionário';
   
-  // Posiciona o botão próximo ao cursor
   selectionButton.style.left = (event.pageX + 10) + 'px';
   selectionButton.style.top = (event.pageY - 30) + 'px';
   
@@ -158,7 +142,6 @@ function showSelectionButton(event, selectedText) {
   document.body.appendChild(selectionButton);
 }
 
-// Esconde botão de seleção
 function hideSelectionButton() {
   if (selectionButton) {
     selectionButton.remove();
@@ -166,11 +149,9 @@ function hideSelectionButton() {
   }
 }
 
-// Mostra modal para adicionar/editar descrição
 function showModal(selectedText) {
   hideModal();
   
-  // Verifica se a palavra já existe no dicionário
   const existingDesc = dictionary[selectedText] || '';
   const isEditing = existingDesc !== '';
   const modalTitle = isEditing ? contentI18n.t('editWord') : contentI18n.t('addToDictionary');
@@ -203,7 +184,6 @@ function showModal(selectedText) {
   
   document.body.appendChild(modal);
   
-  // Event listeners do modal
   modal.querySelector('.dicionario-modal-close').onclick = hideModal;
   modal.onclick = function(e) {
     if (e.target === modal) hideModal();
@@ -231,7 +211,6 @@ function showModal(selectedText) {
     });
   };
   
-  // Event listener para botão de excluir (se existir)
   const deleteBtn = modal.querySelector('#dicionario-delete');
   if (deleteBtn) {
     deleteBtn.onclick = function() {
@@ -249,19 +228,16 @@ function showModal(selectedText) {
     };
   }
   
-  // Event listener para botão de IA
   modal.querySelector('#dicionario-ai-btn').onclick = function(e) {
     e.preventDefault();
     generateAIDescription(selectedText);
   };
   
-  // Event listener para botão de configuração
   modal.querySelector('#dicionario-config').onclick = function(e) {
     e.preventDefault();
     showAIConfigModal();
   };
   
-  // Foca no campo de descrição e seleciona o texto se estiver editando
   const descField = modal.querySelector('#dicionario-desc');
   descField.focus();
   if (isEditing) {
@@ -269,7 +245,6 @@ function showModal(selectedText) {
   }
 }
 
-// Esconde modal
 function hideModal() {
   if (modal) {
     modal.remove();
@@ -277,31 +252,26 @@ function hideModal() {
   }
 }
 
-// Variáveis para controlar o tooltip
 let tooltipTimeout = null;
 let currentTooltipWord = null;
 
-// Mostra tooltip editável ao passar mouse sobre palavras destacadas
 document.addEventListener('mouseover', function(e) {
   if (e.target.classList.contains('dicionario-highlight')) {
     clearTimeout(tooltipTimeout);
     const word = e.target.getAttribute('data-word');
     const desc = e.target.getAttribute('data-desc');
     
-    // Só mostra novo tooltip se for uma palavra diferente
     if (currentTooltipWord !== word) {
       showTooltip(e, word, desc);
       currentTooltipWord = word;
     }
   } else if (e.target.closest('.dicionario-tooltip')) {
-    // Cancela o fechamento se o mouse entrou no tooltip
     clearTimeout(tooltipTimeout);
   }
 });
 
 document.addEventListener('mouseout', function(e) {
   if (e.target.classList.contains('dicionario-highlight')) {
-    // Só inicia o timeout se o mouse não foi para o tooltip
     if (!e.relatedTarget?.closest('.dicionario-tooltip')) {
       tooltipTimeout = setTimeout(() => {
         hideTooltip();
@@ -309,7 +279,6 @@ document.addEventListener('mouseout', function(e) {
       }, 300);
     }
   } else if (e.target.closest('.dicionario-tooltip') && !e.relatedTarget?.closest('.dicionario-tooltip') && !e.relatedTarget?.classList.contains('dicionario-highlight')) {
-    // Fecha o tooltip quando sai completamente dele e não vai para uma palavra destacada
     tooltipTimeout = setTimeout(() => {
       hideTooltip();
       currentTooltipWord = null;
@@ -317,9 +286,7 @@ document.addEventListener('mouseout', function(e) {
   }
 });
 
-// Mostra tooltip com opção de editar
 function showTooltip(event, word, desc) {
-  // Se já existe tooltip para a mesma palavra, não cria novo
   if (tooltip && currentTooltipWord === word) {
     return;
   }
@@ -335,22 +302,19 @@ function showTooltip(event, word, desc) {
     </div>
   `;
   
-  // Posiciona o tooltip acima da palavra
   const x = event.pageX;
-  const y = event.pageY - 70; // Posiciona acima da palavra
+  const y = event.pageY - 70;
   
   tooltip.style.left = x + 'px';
-  tooltip.style.top = Math.max(10, y) + 'px'; // Evita que saia da tela
+  tooltip.style.top = Math.max(10, y) + 'px';
   
   document.body.appendChild(tooltip);
   
-  // Ajusta posição se estiver muito próximo da borda direita
   const tooltipRect = tooltip.getBoundingClientRect();
   if (tooltipRect.right > window.innerWidth - 10) {
     tooltip.style.left = (x - tooltipRect.width - 10) + 'px';
   }
   
-  // Adiciona event listener para clicar na palavra
   const wordElement = tooltip.querySelector('.dicionario-tooltip-word');
   wordElement.addEventListener('click', function(e) {
     e.stopPropagation();
@@ -358,7 +322,6 @@ function showTooltip(event, word, desc) {
   });
 }
 
-// Esconde tooltip
 function hideTooltip() {
   clearTimeout(tooltipTimeout);
   if (tooltip) {
@@ -368,13 +331,11 @@ function hideTooltip() {
   currentTooltipWord = null;
 }
 
-// Função para editar palavra (reutiliza a função showModal)
 function editWordFromTooltip(word, currentDesc) {
   hideTooltip();
   showModal(word);
 }
 
-// Funções para integração com IA
 function showAIConfigModal() {
   const configModal = document.createElement('div');
   configModal.className = 'dicionario-modal';
@@ -431,7 +392,6 @@ function showAIConfigModal() {
   
   document.body.appendChild(configModal);
   
-  // Event listeners do modal
   configModal.querySelector('.dicionario-modal-close').onclick = function() {
     configModal.remove();
   };
@@ -444,7 +404,6 @@ function showAIConfigModal() {
     if (e.target === configModal) configModal.remove();
   };
   
-  // Carrega configurações salvas
   chrome.storage.sync.get({aiConfig: {}}, function(data) {
     const config = data.aiConfig;
     if (config.provider) {
@@ -459,7 +418,6 @@ function showAIConfigModal() {
     }
   });
   
-  // Event listener para mudança de provedor
   configModal.querySelector('#ai-provider').onchange = function() {
     const selectedProvider = this.value;
     const modelSelect = configModal.querySelector('#ai-model');
@@ -473,42 +431,34 @@ function showAIConfigModal() {
     }
   };
   
-  // Event listener para mudança de idioma
   configModal.querySelector('#interface-language').onchange = async function() {
     const newLanguage = this.value;
     
-    // Salva o novo idioma
     await new Promise(resolve => {
       chrome.storage.sync.set({ language: newLanguage }, resolve);
     });
     
-    // Atualiza o idioma atual do content script
     contentI18n.currentLanguage = newLanguage;
     await contentI18n.loadTranslations();
     
-    // Fecha o modal atual e reabre com o novo idioma
     configModal.remove();
     setTimeout(() => {
       showAIConfigModal();
     }, 100);
     
-    // Notifica outros scripts sobre a mudança
     chrome.runtime.sendMessage({
       type: 'languageChanged',
       language: newLanguage
     }).catch(() => {
-      // Ignora erro se não houver receptor
     });
   };
   
-  // Event listener para salvar configuração
   configModal.querySelector('#save-ai-config').onclick = function() {
     const provider = configModal.querySelector('#ai-provider').value;
     const apiKey = configModal.querySelector('#ai-api-key').value.trim();
     const model = configModal.querySelector('#ai-model').value;
     const messageDiv = configModal.querySelector('#ai-config-message');
     
-    // Validações
     if (!provider) {
       messageDiv.textContent = contentI18n.t('pleaseSelectProvider');
       messageDiv.style.color = '#fc8181';
@@ -551,7 +501,6 @@ function updateModelOptions(provider, configModal) {
     return;
   }
   
-  // Adiciona opção padrão
   const defaultOption = document.createElement('option');
   defaultOption.value = '';
   defaultOption.textContent = contentI18n.t('selectModel');
@@ -589,7 +538,6 @@ function updateModelOptions(provider, configModal) {
   }
 }
 
-// Função para coletar contexto da página
 function getPageContext(word) {
   const context = {
     pageTitle: document.title,
@@ -597,13 +545,11 @@ function getPageContext(word) {
     wordOccurrences: []
   };
   
-  // Busca trechos onde a palavra aparece
   const walker = document.createTreeWalker(
     document.body,
     NodeFilter.SHOW_TEXT,
     {
       acceptNode: function(node) {
-        // Ignora scripts, styles e outros elementos não visíveis
         const parent = node.parentElement;
         if (!parent || ['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(parent.tagName)) {
           return NodeFilter.FILTER_REJECT;
@@ -621,14 +567,13 @@ function getPageContext(word) {
     const matches = text.match(wordRegex);
     
     if (matches && matches.length > 0) {
-      // Extrai contexto ao redor da palavra (50 caracteres antes e depois)
       const wordIndex = text.toLowerCase().indexOf(word.toLowerCase());
       if (wordIndex !== -1) {
         const start = Math.max(0, wordIndex - 50);
         const end = Math.min(text.length, wordIndex + word.length + 50);
         const excerpt = text.substring(start, end).trim();
         
-        if (excerpt && context.wordOccurrences.length < 3) { // Limita a 3 ocorrências
+        if (excerpt && context.wordOccurrences.length < 3) {
           context.wordOccurrences.push(excerpt);
         }
       }
@@ -638,10 +583,8 @@ function getPageContext(word) {
   return context;
 }
 
-// Função para obter o prompt do sistema localizado
 function getLocalizedSystemPrompt() {
   if (!contentI18n || !contentI18n.translations) {
-    // Fallback em inglês se as traduções não estiverem carregadas
     return "You are an assistant that creates clear and concise definitions for words and phrases based on the provided context. Respond only with the definition in English, without additional explanations or mention of the context.";
   }
   return contentI18n.t('aiSystemPrompt');
@@ -652,13 +595,10 @@ async function generateAIDescription(word) {
   const descField = modal.querySelector('#dicionario-desc');
   const messageDiv = modal.querySelector('#dicionario-message');
   
-  // Coleta contexto da página
   const pageContext = getPageContext(word);
   
-  // Log do idioma atual para depuração
   console.log('Generating AI description in language:', contentI18n.currentLanguage);
   
-  // Verifica se há configuração de IA
   chrome.storage.sync.get({aiConfig: {}}, async function(data) {
     const config = data.aiConfig;
     
@@ -668,7 +608,6 @@ async function generateAIDescription(word) {
       return;
     }
     
-    // Mostra estado de carregamento
     aiBtn.textContent = '⏳ Gerando...';
     aiBtn.disabled = true;
     messageDiv.textContent = contentI18n.t('generatingDescription');
@@ -707,7 +646,6 @@ async function generateAIDescription(word) {
 }
 
 async function callOpenAI(word, config, pageContext) {
-  // Constrói o prompt com contexto usando traduções localizadas
   let contextPrompt = `${contentI18n.t('aiPromptPrefix')} "${word}"`;
   
   if (pageContext.pageTitle) {
@@ -753,7 +691,6 @@ async function callOpenAI(word, config, pageContext) {
 }
 
 async function callClaude(word, config, pageContext) {
-  // Constrói o prompt com contexto usando traduções localizadas
   let contextPrompt = `${contentI18n.t('aiPromptPrefix')} "${word}"`;
   
   if (pageContext.pageTitle) {
@@ -797,7 +734,6 @@ async function callClaude(word, config, pageContext) {
 }
 
 async function callGemini(word, config, pageContext) {
-  // Constrói o prompt com contexto usando traduções localizadas
   let contextPrompt = `${contentI18n.t('aiPromptPrefix')} "${word}"`;
   
   if (pageContext.pageTitle) {
@@ -843,11 +779,9 @@ async function callGemini(word, config, pageContext) {
   return data.candidates[0].content.parts[0].text;
 }
 
-// Torna a função disponível globalmente para o popup
 window.editWordFromTooltip = editWordFromTooltip;
 window.showModal = showModal;
 
-// Event listeners para esconder elementos ao clicar fora
 document.addEventListener('click', function(e) {
   if (!e.target.closest('.dicionario-selection-btn')) {
     hideSelectionButton();
@@ -862,22 +796,18 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-// A inicialização agora é feita de forma assíncrona no final do arquivo
 
-// Recarrega quando há mudanças no storage
 chrome.storage.onChanged.addListener(function(changes, namespace) {
   if (namespace === 'sync' && changes.dictionary) {
     loadDictionaryAndHighlight();
   }
   
-  // Recarrega traduções quando idioma muda
   if (namespace === 'sync' && changes.language && contentI18n) {
     contentI18n.currentLanguage = changes.language.newValue;
     contentI18n.loadTranslations();
   }
 });
 
-// Estilos CSS
 const style = document.createElement('style');
 style.textContent = `
   .dicionario-highlight {
@@ -1239,7 +1169,6 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// Inicializar i18n e carregar dicionário
 (async function initializeContentScript() {
   await initContentI18n();
   loadDictionaryAndHighlight();
